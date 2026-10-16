@@ -76,6 +76,13 @@ body {
   min-width: 0; /* grid-защита от переполнения содержимым */
 }
 
+/* Надёжная защита формы от «выползания» за границы страницы:
+   содержимое никогда не шире панели, скролл по горизонтали отключён */
+.form-scroll > form { max-width: 100%; }
+fieldset.block { max-width: 100%; min-width: 0; }
+fieldset.block .grid-2 { min-width: 0; }
+fieldset.block input, fieldset.block select, fieldset.block textarea { box-sizing: border-box; }
+
 /* ---------- Форма (левая колонка) ---------- */
 .form-scroll { max-height: calc(100vh - 140px); overflow-y: auto; overflow-x: hidden; }
 
@@ -104,11 +111,14 @@ fieldset.block legend::after {
   border-radius: 2px;
 }
 
-.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px 14px; }
+/* Сетка полей формы.
+   2 колонки через minmax(0,1fr) — никогда не сжимаются ниже ширины контейнера
+   и не «наезжают» друг на друга; на узких экранах (≤760px) — одна колонка. */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 .grid-2 .span-2 { grid-column: 1 / -1; }
-@media (max-width: 520px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
 
-.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; min-width: 0; max-width: 100%; overflow-wrap: break-word; }
 .field label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .3px; }
 .field input[type="text"],
 .field input[type="tel"],
@@ -140,7 +150,9 @@ fieldset.block legend::after {
 }
 
 /* Загрузка фото */
-.photo-row { display: flex; align-items: center; gap: 14px; }
+/* Строка фото: wrap + flex-защита, чтобы превью и кнопки не выползали за панель */
+.photo-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+.file-btn { min-width: 0; max-width: 100%; }
 .photo-thumb {
   width: 74px; height: 74px; border-radius: 50%;
   object-fit: cover;
@@ -256,6 +268,39 @@ iframe#preview {
   display: block;
 }
 
+/* ---------- Блок «Block Colors» (этап G: выбор цвета каждого блока резюме) ---------- */
+.theme-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.theme-hint { font-size: 12px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.theme-list {
+  display: grid;
+  /* 2 колонки minmax(0,1fr) — не сжимаются ниже контейнера, не наезжают друг на друга */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+@media (max-width: 760px) {
+  .theme-list { grid-template-columns: minmax(0, 1fr); }
+}
+.theme-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 7px 10px;
+  background: #fdfdfe;
+  min-width: 0;
+}
+.theme-row label { font-size: 12.5px; color: var(--ink); cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.theme-row input[type="color"] {
+  width: 34px; height: 28px; padding: 0;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: #fff; cursor: pointer;
+}
+.theme-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.theme-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
+.theme-hex { font: 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); white-space: nowrap; }
+
 /* ============================================================
    Стили САМОГО РЕЗЮМЕ (классы .sr-*).
    Этот блок копизируется в standalone HTML при экспорте.
@@ -370,9 +415,11 @@ iframe#preview {
 .sr-info-item .v { color: var(--ink); font-weight: 600; text-align: right; }
 .sr-info-item .v.ph { color: #aab2bf; font-weight: 400; font-style: italic; }
 
-/* --- Таблица sea service --- */
+/* --- Таблица sea service: wrap даёт горизонтальный скролл на узких экранах --- */
+.sr-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table.sr-table {
   width: 100%;
+  min-width: 640px; /* колонки не сминаются; на мобильном таблица скроллится внутри секции */
   border-collapse: collapse;
   font-size: 13px;
   border: 1px solid #dbe0e8;
@@ -441,6 +488,9 @@ table.sr-table {
   .sr-section { padding: 22px 34px 6px; }
   .sr-header { padding: 30px 34px 26px; }
   .sr-footer { padding: 0 34px 24px; }
+  /* в печати min-width не нужен — таблица умещается на листе */
+  table.sr-table { min-width: 0; }
+  .sr-table-wrap { overflow: visible; }
 }
 
 /* ---------- Адаптив UI конструктора (этап F) ----------
