@@ -13,25 +13,63 @@ const DEFAULT_FOOTER = "References and original documents available upon request
 
 /* ---------- JSON-схема данных резюме (Шаг 2) ----------
    {
-     schemaVersion: 1,
+     schemaVersion: 2,
      header:   { fullName, rank, age, nationality, passport, seamanBook, photoDataUrl },
      personal: { dob, heightWeight, englishLevel, availableFrom, phone, email, cityCountry, totalSeaService },
      aboutMe:  string,
      vessels:  [{ vesselName, vesselType, rank, period, duration, duties }],
      certs:    [{ name, validUntil }],
-     footerText: string
+     footerText: string,
+     theme: {          // цвета блоков резюме (этап G: выбор цвета каждого блока)
+       headerBg, headerText, accent, sectionTitle, hairline,
+       bodyBg, ink, muted, tableHeadBg, tableHeadText, zebra, certBg, footerText
+     }
    }
 ----------------------------------------------------------- */
 
+const DEFAULT_THEME = {
+  headerBg: "#0B1F3A",      // шапка: фон
+  headerText: "#FFFFFF",    // шапка: основной текст (имя)
+  accent: "#C9A227",        // акцент: ранг, pill-рамки, золотые линии, thead таблиц
+  sectionTitle: "#0B1F3A",  // заголовки секций
+  hairline: "#E3C56A",      // светлый оттенок акцента (подчёркивания, свечения)
+  bodyBg: "#FFFFFF",        // фон страницы резюме
+  ink: "#1C2430",           // основной текст
+  muted: "#6B7686",         // вторичный текст
+  tableHeadBg: "#12305A",   // фон заголовка таблицы стажа
+  zebra: "#F7F9FC",         // зебра строк таблицы
+  certBg: "#FBF9F1",        // фон карточек сертификатов
+  footerText: "#6B7686"     // текст футера
+};
+
+// Все настраиваемые блоки: id -> подпись в UI (подписи UI на английском)
+const THEME_BLOCKS = [
+  ["headerBg",     "Header background"],
+  ["headerText",   "Header text (name)"],
+  ["accent",       "Accent / gold details"],
+  ["sectionTitle", "Section titles"],
+  ["hairline",     "Accent light shade"],
+  ["bodyBg",       "Page background"],
+  ["ink",          "Main text"],
+  ["muted",        "Secondary text"],
+  ["tableHeadBg",  "Table header background"],
+  ["zebra",        "Table zebra rows"],
+  ["certBg",       "Certificate cards background"],
+  ["footerText",   "Footer text"]
+];
+
+function cloneDefaultTheme() { return Object.assign({}, DEFAULT_THEME); }
+
 function emptyData() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     header: { fullName: "", rank: "", age: "", nationality: "", passport: "", seamanBook: "", photoDataUrl: "" },
     personal: { dob: "", heightWeight: "", englishLevel: "", availableFrom: "", phone: "", email: "", cityCountry: "", totalSeaService: "" },
     aboutMe: "",
     vessels: [],
     certs: [],
-    footerText: ""
+    footerText: "",
+    theme: cloneDefaultTheme()
   };
 }
 
@@ -345,56 +383,150 @@ function renderPhotoThumb() {
   }
 }
 
-/* ---------- Генерация HTML резюме (Шаги 9, 10, 6) ----------
-   Весь видимый текст резюме — на английском. Пользовательский ввод экранируется. */
-function resumeCss() {
-  // Инлайним стили резюме в экспорт: берём блок .sr-* из загруженного styles.css,
-  // а также дублируем критичные переменные, чтобы файл был самодостаточным.
+/* ---------- Утилиты цвета (этап G) ---------- */
+
+// Валидация hex-цвета (#RGB / #RRGGBB); введёт user — проверяем строго,
+// чтобы значение безопасно попадало в CSS/inline-стили.
+function normHex(c) {
+  const s = String(c == null ? "" : c).trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s.toUpperCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(s)) return ("#" + s.slice(1).split("").map(ch => ch + ch).join("")).toUpperCase();
+  return "";
+}
+
+// hex -> {r,g,b}
+function hexToRgb(hex) {
+  let h = String(hex || "").replace("#", "");
+  if (h.length === 3) h = h.split("").map(ch => ch + ch).join("");
+  const n = parseInt(h, 16);
+  if (!Number.isFinite(n)) return { r: 0, g: 0, b: 0 };
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+// Смешать цвет с белым (amt>0) или чёрным (amt<0); amt в [-1..1]
+function mix(hex, amt) {
+  const t = hexToRgb(hex);
+  const target = amt >= 0 ? 255 : 0;
+  const a = Math.min(1, Math.abs(amt));
+  const ch = (c) => Math.round(target * a + c * (1 - a));
+  const to2 = (v) => v.toString(16).padStart(2, "0");
+  return "#" + to2(ch(t.r)) + to2(ch(t.g)) + to2(ch(t.b));
+}
+
+// Относительная яркость (WCAG)
+function luminance(hex) {
+  const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const { r, g, b } = hexToRgb(hex);
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function contrastRatio(a, b) {
+  const l1 = Math.max(luminance(a), luminance(b));
+  const l2 = Math.min(luminance(a), luminance(b));
+  return (l1 + 0.05) / (l2 + 0.05);
+}
+
+// Прозрачная версия hex-цвета (rgba) — для теней/свечений акцента
+function rgbaOf(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Итоговая тема пользователя поверх дефолта (пустые/битые значения игнорируются)
+function currentTheme() {
+  const t = cloneDefaultTheme();
+  const src = (data && data.theme) || {};
+  Object.keys(DEFAULT_THEME).forEach(k => {
+    const v = normHex(src[k]);
+    if (v) t[k] = v;
+  });
+  // Производные значения (не редактируются пользователем напрямую)
+  t.tableHeadText = "#F3EAD0";                                   // текст thead
+  t.headerBgGradEnd = mix(t.headerBg, 0.28);                    // светлее для градиента шапки
+  t.accentDeep = mix(t.accent, -0.35);                           // темнее: «металл» для колец/теней
+  t.borderSoft = mix(t.bodyBg, -0.13);                          // мягкие границы таблиц/карточек
+  t.placeholder = "#AAB2BF";                                    // курсивные placeholder'ы
+  t.photoPlaceholder = "#9AA4B2";                               // текст [PHOTO]
+  return t;
+}
+
+/* Пресеты палитр (по мотивам design/design-tokens.json; все значения — примеры) */
+const THEME_PRESETS = {
+  "navy-gold": {
+    label: "Navy Gold",
+    headerBg: "#0B1F3A", headerText: "#FFFFFF", accent: "#C9A227", sectionTitle: "#0B1F3A",
+    hairline: "#E3C56A", bodyBg: "#FFFFFF", ink: "#1C2430", muted: "#6B7686",
+    tableHeadBg: "#12305A", zebra: "#F7F9FC", certBg: "#FBF9F1", footerText: "#6B7686"
+  },
+  "black-champagne": {
+    label: "Black Champagne",
+    headerBg: "#16110D", headerText: "#F5EFE3", accent: "#D9BE8C", sectionTitle: "#241B12",
+    hairline: "#EBD9B4", bodyBg: "#FFFDF8", ink: "#2A221A", muted: "#7C7266",
+    tableHeadBg: "#2A241E", zebra: "#F7F2E9", certBg: "#FAF5EA", footerText: "#7C7266"
+  },
+  "ocean-platinum": {
+    label: "Ocean Platinum",
+    headerBg: "#1E2B3A", headerText: "#FFFFFF", accent: "#8FA3B8", sectionTitle: "#1E2B3A",
+    hairline: "#C6CBD4", bodyBg: "#FFFFFF", ink: "#22303E", muted: "#66788A",
+    tableHeadBg: "#33485F", zebra: "#F4F7FA", certBg: "#F2F5F8", footerText: "#66788A"
+  }
+};
+
+/* Собранные стили резюме: возвращает CSS с подставленными цветами выбранной темы.
+   Все правила используют переменные --sr-*, поэтому экспорт остаётся самодостаточным. */
+function resumeCss(t) {
+  t = t || currentTheme();
+  // Инлайним стили резюме в экспорт: файл должен быть самодостаточным.
   return `
-    :root{--navy-deep:#0B1F3A;--navy-2:#12305A;--gold:#C9A227;--gold-soft:#E3C56A;
-      --cream:#F5F2E8;--ink:#1c2430;--muted:#6b7686;
+    :root{
+      --sr-header-bg:${t.headerBg};--sr-header-bg-grad:${t.headerBgGradEnd};
+      --sr-header-text:${t.headerText};--sr-accent:${t.accent};--sr-accent-deep:${t.accentDeep};
+      --sr-hairline:${t.hairline};--sr-body-bg:${t.bodyBg};--sr-ink:${t.ink};--sr-muted:${t.muted};
+      --sr-title:${t.sectionTitle};--sr-thead-bg:${t.tableHeadBg};--sr-thead-text:${t.tableHeadText};
+      --sr-zebra:${t.zebra};--sr-cert-bg:${t.certBg};--sr-border:${t.borderSoft};
+      --sr-footer-text:${t.footerText};--sr-placeholder:${t.placeholder};--sr-photo-ph:${t.photoPlaceholder};
       --font-serif:Georgia,"Times New Roman","PT Serif",serif;
       --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
-    body{margin:0;background:#EDEFF3;font-family:var(--font-sans);}
-    .sr-page{max-width:900px;margin:24px auto;background:#fff;color:var(--ink);border-radius:6px;overflow:hidden;box-shadow:0 18px 50px rgba(11,31,58,.18);}
-    .sr-header{background:radial-gradient(1200px 400px at 85% -40%,rgba(201,162,39,.22),transparent 60%),linear-gradient(135deg,#0B1F3A 0%,#14315C 55%,#0B1F3A 100%);color:#fff;padding:44px 48px 38px;display:flex;gap:34px;align-items:center;}
-    /* Кольцо фото — linear-градиент (conic-gradient убран: не поддерживается старыми Safari/Chrome) */
-    .sr-photo-ring{width:150px;height:150px;border-radius:50%;padding:5px;background:linear-gradient(135deg,var(--gold-soft),var(--gold) 45%,#8a6d1c 75%,var(--gold-soft));box-shadow:0 10px 26px rgba(0,0,0,.35);flex:0 0 auto;}
-    .sr-photo-ring img,.sr-photo-placeholder{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--cream);}
-    .sr-photo-placeholder{display:flex;align-items:center;justify-content:center;color:#9aa4b2;font-size:12px;letter-spacing:1px;text-transform:uppercase;}
+    body{margin:0;background:${mix(t.bodyBg, -0.06)};font-family:var(--font-sans);}
+    .sr-page{max-width:900px;margin:24px auto;background:var(--sr-body-bg);color:var(--sr-ink);border-radius:6px;overflow:hidden;box-shadow:0 18px 50px ${rgbaOf(t.headerBg,.18)};}
+    .sr-header{background:radial-gradient(1200px 400px at 85% -40%,${rgbaOf(t.accent,.22)},transparent 60%),linear-gradient(135deg,var(--sr-header-bg) 0%,var(--sr-header-bg-grad) 55%,var(--sr-header-bg) 100%);color:var(--sr-header-text);padding:44px 48px 38px;display:flex;gap:34px;align-items:center;}
+    /* Кольцо фото — linear-градиент вместо конического: конические градиенты не поддерживаются старыми Safari/Chrome */
+    .sr-photo-ring{width:150px;height:150px;border-radius:50%;padding:5px;background:linear-gradient(135deg,var(--sr-hairline),var(--sr-accent) 45%,var(--sr-accent-deep) 75%,var(--sr-hairline));box-shadow:0 10px 26px rgba(0,0,0,.35);flex:0 0 auto;}
+    .sr-photo-ring img,.sr-photo-placeholder{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:${mix(t.bodyBg, -0.04)};}
+    .sr-photo-placeholder{display:flex;align-items:center;justify-content:center;color:var(--sr-photo-ph);font-size:12px;letter-spacing:1px;text-transform:uppercase;}
     .sr-id{flex:1;min-width:0;}
-    .sr-name{font-family:var(--font-serif);font-size:34px;font-weight:600;letter-spacing:1px;margin:0 0 6px;}
-    .sr-rank{color:var(--gold-soft);font-size:16px;letter-spacing:3px;text-transform:uppercase;margin:0 0 18px;}
+    .sr-name{font-family:var(--font-serif);font-size:34px;font-weight:600;letter-spacing:1px;margin:0 0 6px;overflow-wrap:anywhere;}
+    .sr-rank{color:var(--sr-hairline);font-size:16px;letter-spacing:3px;text-transform:uppercase;margin:0 0 18px;}
     .sr-pills{display:flex;flex-wrap:wrap;gap:8px;}
-    .sr-pill{border:1px solid rgba(201,162,39,.55);background:rgba(255,255,255,.06);color:#eef2f7;border-radius:999px;padding:6px 14px;font-size:12.5px;}
-    .sr-pill b{color:var(--gold-soft);font-weight:600;margin-right:6px;}
-    .sr-hairline{height:3px;background:linear-gradient(90deg,transparent,var(--gold) 15%,var(--gold-soft) 50%,var(--gold) 85%,transparent);}
+    .sr-pill{border:1px solid ${rgbaOf(t.accent,.55)};background:rgba(255,255,255,.06);color:var(--sr-header-text);border-radius:999px;padding:6px 14px;font-size:12.5px;}
+    .sr-pill b{color:var(--sr-hairline);font-weight:600;margin-right:6px;}
+    .sr-hairline{height:3px;background:linear-gradient(90deg,transparent,var(--sr-accent) 15%,var(--sr-hairline) 50%,var(--sr-accent) 85%,transparent);}
     .sr-section{padding:30px 48px 8px;}
-    .sr-section-title{font-family:var(--font-serif);font-size:18px;letter-spacing:2.5px;text-transform:uppercase;color:var(--navy-deep);margin:0 0 4px;}
-    .sr-section-sub{height:2px;width:56px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));border-radius:2px;margin:8px 0 18px;}
-    .sr-about-text{font-size:14.5px;line-height:1.75;color:#33404f;margin:0;white-space:pre-line;}
+    .sr-section-title{font-family:var(--font-serif);font-size:18px;letter-spacing:2.5px;text-transform:uppercase;color:var(--sr-title);margin:0 0 4px;}
+    .sr-section-sub{height:2px;width:56px;background:linear-gradient(90deg,var(--sr-accent),var(--sr-hairline));border-radius:2px;margin:8px 0 18px;}
+    .sr-about-text{font-size:14.5px;line-height:1.75;color:var(--sr-ink);margin:0;white-space:pre-line;}
     .sr-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 26px;}
-    .sr-info-item{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted #dfe3ea;padding:7px 2px;font-size:13.5px;}
-    .sr-info-item .k{color:var(--muted);letter-spacing:.4px;text-transform:uppercase;font-size:11.5px;padding-top:2px;}
-    .sr-info-item .v{color:var(--ink);font-weight:600;text-align:right;}
-    .sr-info-item .v.ph{color:#aab2bf;font-weight:400;font-style:italic;}
-    table.sr-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #dbe0e8;}
-    .sr-table thead th{background:linear-gradient(180deg,var(--navy-2),var(--navy-deep));color:#f3ead0;text-align:left;font-weight:600;letter-spacing:.8px;text-transform:uppercase;font-size:11px;padding:12px 14px;}
-    .sr-table tbody td{padding:12px 14px;border-top:1px solid #e7ebf1;vertical-align:top;line-height:1.5;}
-    .sr-table tbody tr:nth-child(even){background:#f7f9fc;}
-    .sr-table .vessel-name{font-weight:700;color:var(--navy-deep);}
-    .sr-table .vessel-type{color:var(--muted);font-size:12px;}
-    .sr-table .rank-cell{color:#a3801a;font-weight:600;}
-    .sr-empty-row td{text-align:center;color:#aab2bf;font-style:italic;padding:22px;}
+    .sr-info-item{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted var(--sr-border);padding:7px 2px;font-size:13.5px;}
+    .sr-info-item .k{color:var(--sr-muted);letter-spacing:.4px;text-transform:uppercase;font-size:11.5px;padding-top:2px;}
+    .sr-info-item .v{color:var(--sr-ink);font-weight:600;text-align:right;}
+    .sr-info-item .v.ph{color:var(--sr-placeholder);font-weight:400;font-style:italic;}
+    .sr-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    table.sr-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--sr-border);min-width:640px;}
+    .sr-table thead th{background:linear-gradient(180deg,var(--sr-header-bg-grad),var(--sr-thead-bg));color:var(--sr-thead-text);text-align:left;font-weight:600;letter-spacing:.8px;text-transform:uppercase;font-size:11px;padding:12px 14px;}
+    .sr-table tbody td{padding:12px 14px;border-top:1px solid var(--sr-border);vertical-align:top;line-height:1.5;}
+    .sr-table tbody tr:nth-child(even){background:var(--sr-zebra);}
+    .sr-table .vessel-name{font-weight:700;color:var(--sr-title);}
+    .sr-table .vessel-type{color:var(--sr-muted);font-size:12px;}
+    .sr-table .rank-cell{color:${mix(t.accent, -0.28)};font-weight:600;}
+    .sr-empty-row td{text-align:center;color:var(--sr-placeholder);font-style:italic;padding:22px;}
     .sr-certs{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;}
-    .sr-cert{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #e4e0cf;background:linear-gradient(180deg,#fffdf6,#f8f5ea);border-radius:10px;padding:12px 16px;font-size:13.5px;}
-    .sr-cert .cname{font-weight:600;color:var(--navy-deep);}
-    .sr-cert .cvalid{color:var(--muted);font-size:12px;white-space:nowrap;}
-    .sr-cert .cvalid b{color:#a3801a;}
+    .sr-cert{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--sr-border);background:var(--sr-cert-bg);border-radius:10px;padding:12px 16px;font-size:13.5px;}
+    .sr-cert .cname{font-weight:600;color:var(--sr-title);}
+    .sr-cert .cvalid{color:var(--sr-muted);font-size:12px;white-space:nowrap;}
+    .sr-cert .cvalid b{color:${mix(t.accent, -0.28)};}
     .sr-footer{margin-top:34px;padding:0 48px 34px;}
     /* Стальной канат убран по решению владельца проекта (этап F): футер = тонкая золотая линия + текст */
-    .sr-footer-rule{height:2px;background:linear-gradient(90deg,transparent,var(--gold) 15%,var(--gold-soft) 50%,var(--gold) 85%,transparent);border:none;border-radius:2px;margin:0 0 16px;}
-    .sr-footer-text{text-align:center;margin:0;font-family:var(--font-serif);font-size:13.5px;letter-spacing:1.5px;color:var(--muted);}
+    .sr-footer-rule{height:2px;background:linear-gradient(90deg,transparent,var(--sr-accent) 15%,var(--sr-hairline) 50%,var(--sr-accent) 85%,transparent);border:none;border-radius:2px;margin:0 0 16px;}
+    .sr-footer-text{text-align:center;margin:0;font-family:var(--font-serif);font-size:13.5px;letter-spacing:1.5px;color:var(--sr-footer-text);}
     /* Адаптив резюме внутри превью и в standalone-файле (этап F) */
     @media (max-width: 720px){
       .sr-header{flex-direction:column;align-items:flex-start;gap:20px;padding:28px 20px 24px;}
@@ -405,14 +537,17 @@ function resumeCss() {
       .sr-certs,.sr-info-grid{grid-template-columns:minmax(0,1fr);}
       .sr-table{font-size:12px;}
       .sr-table thead th,.sr-table tbody td{padding:9px 10px;}
+      /* min-width не нужен в печати — таблица умещается на листе */
+      @media print{.sr-table{min-width:0;}}
       .sr-footer{padding:0 20px 22px;}
     }
-    @media print{body{background:#fff;}.sr-page{box-shadow:none;max-width:100%;margin:0;}}
+    @media print{body{background:#fff;}.sr-page{box-shadow:none;max-width:100%;margin:0;}.sr-table{min-width:0;}.sr-table-wrap{overflow:visible;}}
   `;
 }
 
 function buildResumeHtml(d, forStandalone) {
   const h = d.header || {}, p = d.personal || {};
+  const t = currentTheme(); // этап G: пользовательские цвета блоков
   const name = val(h.fullName, "FULL NAME");
   const rank = val(h.rank, "RANK");
   const age = val(h.age, "AGE");
@@ -461,18 +596,22 @@ function buildResumeHtml(d, forStandalone) {
           <span class="cname">${esc(val(c.name, "CERTIFICATE NAME").text)}</span>
           <span class="cvalid">Valid until <b>${esc(val(c.validUntil, "MM.YYYY").text)}</b></span>
         </div>`).join("")
-    : `<div class="placeholder-note" style="border:1px dashed #d8d3bb;border-radius:10px;padding:14px;text-align:center;color:#9aa4b2;font-style:italic;">No certificates listed — [ADD CERTIFICATES]</div>`;
+    : `<div class="placeholder-note" style="border:1px dashed ${t.borderSoft};border-radius:10px;padding:14px;text-align:center;color:${t.placeholder};font-style:italic;">No certificates listed — [ADD CERTIFICATES]</div>`;
 
   const about = String(d.aboutMe || "").trim();
   const aboutHtml = about
     ? `<p class="sr-about-text">${esc(about)}</p>`
-    : `<p class="sr-about-text" style="color:#aab2bf;font-style:italic;">[Tell a few words about yourself — About Me section]</p>`;
+    : `<p class="sr-about-text" style="color:${t.placeholder};font-style:italic;">[Tell a few words about yourself — About Me section]</p>`;
 
   const footerText = String(d.footerText || "").trim() || DEFAULT_FOOTER;
+  // Контраст текста шапки и цвета секций/футера на фоне страницы (этап G)
+  const headerTextColor = contrastRatio(t.headerText, t.headerBg) >= 2.5 ? t.headerText : "#FFFFFF";
+  const titleColor = contrastRatio(t.sectionTitle, t.bodyBg) >= 2.5 ? t.sectionTitle : t.ink;
+  const footColor = contrastRatio(t.footerText, t.bodyBg) >= 2.5 ? t.footerText : t.muted;
 
   const body = `
-    <div class="sr-page">
-      <header class="sr-header">
+    <div class="sr-page" style="--sr-title:${titleColor};--sr-footer-text:${footColor};">
+      <header class="sr-header" style="color:${headerTextColor};">
         <div class="sr-photo-wrap"><div class="sr-photo-ring">${photoHtml}</div></div>
         <div class="sr-id">
           <h1 class="sr-name">${esc(name.text)}</h1>
@@ -499,12 +638,15 @@ function buildResumeHtml(d, forStandalone) {
       <section class="sr-section">
         <h2 class="sr-section-title">Sea Service Experience</h2>
         <div class="sr-section-sub"></div>
+        <!-- wrap: на узких экранах таблица скроллится горизонтально, а не ломает вёрстку -->
+        <div class="sr-table-wrap">
         <table class="sr-table">
           <thead><tr>
             <th>Vessel Name / Type</th><th>Rank</th><th>Period</th><th>Duration</th><th>Duties / Remarks</th>
           </tr></thead>
           <tbody>${vesselsRows}</tbody>
         </table>
+        </div>
       </section>
 
       <section class="sr-section">
@@ -535,6 +677,74 @@ function buildResumeHtml(d, forStandalone) {
 </head>
 <body>${body}</body>
 </html>`;
+}
+
+/* ---------- UI настроек цветов блоков (этап G) ---------- */
+function renderThemeUI() {
+  const list = document.getElementById("themeList");
+  if (!list) return;
+  list.innerHTML = ""; // служебная разметка; значения ставим через .value/.textContent
+  THEME_BLOCKS.forEach(([key, label]) => {
+    const row = document.createElement("div");
+    row.className = "theme-row";
+
+    const inp = document.createElement("input");
+    inp.type = "color";
+    inp.id = "themeColor-" + key;
+    inp.setAttribute("aria-label", label);
+    inp.value = normHex(data.theme && data.theme[key]) || DEFAULT_THEME[key];
+    // input[type=color] требует #RRGGBB — нормализуем 3-значный hex
+    if (!/^#[0-9a-fA-F]{6}$/.test(inp.value)) inp.value = mix(inp.value, 0);
+
+    const lab = document.createElement("label");
+    lab.htmlFor = inp.id;
+    lab.textContent = label;
+
+    const hex = document.createElement("span");
+    hex.className = "theme-hex";
+    hex.textContent = inp.value.toUpperCase();
+
+    inp.addEventListener("input", () => {
+      data.theme[key] = inp.value;
+      hex.textContent = inp.value.toUpperCase();
+      scheduleUpdate();
+    });
+
+    row.append(inp, lab, hex);
+    list.appendChild(row);
+  });
+}
+
+// Заполнить color-инпуты из модели (после импорта / sample / restore)
+function refreshThemeInputs() {
+  THEME_BLOCKS.forEach(([key]) => {
+    const inp = document.getElementById("themeColor-" + key);
+    if (!inp) return;
+    let v = normHex(data.theme && data.theme[key]) || DEFAULT_THEME[key];
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) v = mix(v, 0);
+    inp.value = v;
+    const hexSpan = inp.parentElement.querySelector(".theme-hex");
+    if (hexSpan) hexSpan.textContent = v.toUpperCase();
+  });
+}
+
+function applyPreset(id) {
+  const preset = THEME_PRESETS[id];
+  if (!preset) return;
+  data.theme = Object.assign(cloneDefaultTheme(), preset);
+  delete data.theme.label;
+  refreshThemeInputs();
+  update();
+  saveToStorage();
+  setStatus(`Palette “${preset.label}” applied. Fine-tune any block below or on the right.`, "ok");
+}
+
+function resetTheme() {
+  data.theme = cloneDefaultTheme();
+  refreshThemeInputs();
+  update();
+  saveToStorage();
+  setStatus("Block colors reset to the default Navy Gold palette.", "ok");
 }
 
 /* ---------- Live preview (Шаг 6) ---------- */
@@ -597,6 +807,13 @@ function normalizeImported(obj) {
     cityCountry: str(p.cityCountry), totalSeaService: str(p.totalSeaService)
   };
   d.aboutMe = str(obj.aboutMe);
+  // Тема (этап G): принимаем только валидные hex-значения, остальное — дефолт
+  const th = obj.theme || {};
+  d.theme = cloneDefaultTheme();
+  Object.keys(DEFAULT_THEME).forEach(k => {
+    const v = normHex(th[k]);
+    if (v) d.theme[k] = v;
+  });
   d.vessels = Array.isArray(obj.vessels) ? obj.vessels.map(v => ({
     vesselName: str(v && v.vesselName), vesselType: str(v && v.vesselType), rank: str(v && v.rank),
     period: str(v && v.period), duration: str(v && v.duration), duties: str(v && v.duties)
@@ -605,7 +822,7 @@ function normalizeImported(obj) {
     name: str(c && c.name), validUntil: str(c && c.validUntil)
   })) : [];
   d.footerText = str(obj.footerText);
-  d.schemaVersion = 1;
+  d.schemaVersion = 2;
   return d;
 }
 
@@ -640,6 +857,7 @@ function importJsonFile(file) {
       data = parsed;
       fillSimpleFieldsFromModel();
       rerenderLists();
+      refreshThemeInputs();
       update();
       saveToStorage();
       setStatus("JSON imported successfully.", "ok");
@@ -668,6 +886,7 @@ function clearAll() {
   tempPhotoUrl = "";
   fillSimpleFieldsFromModel();
   rerenderLists();
+  refreshThemeInputs();
   update();
   saveToStorage();
   setStatus("All data cleared.", "ok");
@@ -677,6 +896,7 @@ function loadSample() {
   tempPhotoUrl = "";
   fillSimpleFieldsFromModel();
   rerenderLists();
+  refreshThemeInputs();
   update();
   saveToStorage();
   setStatus("Sample data loaded (all values are synthetic examples).", "ok");
@@ -688,6 +908,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadFromStorage();
   fillSimpleFieldsFromModel();
   rerenderLists();
+  renderThemeUI();
   update();
 
   // Автосохранение при вводе простых полей
@@ -700,6 +921,12 @@ document.addEventListener("DOMContentLoaded", () => {
     addItem("vessels", { vesselName: "", vesselType: "", rank: "", period: "", duration: "", duties: "" }));
   document.getElementById("addCertBtn").addEventListener("click", () =>
     addItem("certs", { name: "", validUntil: "" }));
+
+  // Кнопки пресетов палитр (этап G)
+  document.querySelectorAll("[data-preset]").forEach(btn =>
+    btn.addEventListener("click", () => applyPreset(btn.dataset.preset)));
+  const resetBtn = document.getElementById("themeResetBtn");
+  if (resetBtn) resetBtn.addEventListener("click", resetTheme);
 
   document.getElementById("photoInput").addEventListener("change", e => {
     handlePhotoFile(e.target.files && e.target.files[0]);

@@ -38,3 +38,24 @@
 - Проверки (node/python): JSON валиден (3 темы); скобки CSS сбалансированы; все 6 классов
   компонентов, обе доп. темы, @media print, conic-gradient и repeating-linear-gradient присутствуют;
   cross-check токены↔CSS без предупреждений. Визуальная проверка в браузере — за пользователем.
+
+## Этап H — 2026-10-16: фикс вёрстки формы (поля «уезжали» за границу) + адаптив + чистка ошибок
+Проблема пользователя: блок Personal/Header (Full Name…Photo) сдвигался за границы страницы, поля почти не видно.
+Причина: `grid-template-columns: repeat(auto-fit, minmax(min(230px,100%),1fr))` при ~520px панели давал 2 колонки по
+~230px + gap > ширины контейнера → переполнение/наезд.
+
+Изменения:
+- styles.css: `.grid-2` и `.theme-list` переведены на `repeat(2, minmax(0,1fr))` (колонки никогда не шире контейнера),
+  брейкпоинт одной колонки поднят до 760px; удалён дублирующийся old media (520px) для .theme-list.
+- Защита формы: fieldset/grid/input `min-width:0; max-width:100%; box-sizing:border-box`; `.photo-row` — flex-wrap;
+  `.field` — overflow-wrap:break-word.
+- Резюме: таблица sea service обёрнута в `.sr-table-wrap{overflow-x:auto}` + `min-width:640px` (не сминается,
+  скроллится внутри секции); в @media print min-width сброшен — печать unaffected. Синхронизировано в styles.css
+  и в resumeCss()/экспорте app.js.
+- Исправлены 3 реальных бага, найденных регрессией:
+  1) normHex возвращал значение в исходном регистре → hex из color-input (#fafafa) не совпадал со сравнениями;
+     теперь канон UPPERCASE #RRGGBB (и 3-значный раскрывается).
+  2) комментарий «conic-gradient убран» содержал литерал conic-gradient и ломал проверку совместимости — перефразирован.
+  3) лишний вложенный @media внутри блока @media (max-width:720px) в resumeCss заменён на корректный print-сброс.
+Проверки: node --check OK; скобки CSS сбалансированы (169); регрессия tests/run-tests.js: RESULT 32 passed, 0 failed.
+За пользователем: визуальная проверка в браузере на узком окне (ожидание: 1 колонка ≤760px, ничего не наезжает).

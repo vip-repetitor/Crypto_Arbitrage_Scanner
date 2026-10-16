@@ -129,6 +129,19 @@
             </div>
           </fieldset>
 
+          <!-- 7. Block Colors (этап G: выбор цвета каждого блока резюме) -->
+          <fieldset class="block">
+            <legend>Block Colors</legend>
+            <div class="theme-presets" role="group" aria-label="Palette presets">
+              <button type="button" class="btn btn-ghost btn-sm" data-preset="navy-gold">Navy Gold</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-preset="black-champagne">Black Champagne</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-preset="ocean-platinum">Ocean Platinum</button>
+              <button type="button" class="btn btn-outline-gold btn-sm" id="themeResetBtn">Reset</button>
+            </div>
+            <p class="theme-hint">Presets apply a full palette; then fine-tune the color of any block below. Changes are saved automatically.</p>
+            <div id="themeList" class="theme-list"><!-- color-строки рендерит app.js --></div>
+          </fieldset>
+
         </form>
 
         <!-- Панель инструментов -->
