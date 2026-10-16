@@ -45,29 +45,65 @@ def die(msg: str) -> None:
     sys.exit(1)
 
 
-def resolve_npm() -> str:
+def _npm_candidates() -> list[str]:
     """
-    Возвращает путь к npm, совместимый с запуском на Windows.
+    Список имён npm-исполняемого в порядке проверки.
 
-    Логика: npm под Windows — это пакетный менеджер, распространяемый вместе
-    с Node.js. На этой платформе сам исполняемый файл называется `npm.cmd`,
-    а не `npm`. Поэтому сначала проверяем наличие `npm` через shutil.which,
-    затем явно пробуем `npm.cmd` (для Windows), чтобы subprocess мог найти
-    корректную команду без ошибки FileNotFoundError [WinError 2].
+    Логика: на Windows npm поставляется как several shim-файлы в одной папке
+    с node.exe: `npm.cmd` (классический cmd-шим) и `npm.exe` (shim для Git Bash).
+    Просто `"npm"` резолвится только если расширение есть в PATHEXT; при его
+    отсутствии shutil.which("npm") возвращает None и subprocess падает с
+    FileNotFoundError [WinError 2] — что и наблюдалось у пользователя.
+    Поэтому перебираем все реальные варианты, а не одно имя.
     """
-    # Стандартное имя работает на Linux/macOS и часто находится в PATH даже на Windows.
-    if shutil.which("npm") is not None:
-        return "npm"
-    # Для Windows добавляем явный вариант .cmd, который реально запускает Node.
-    if os.name == "nt" and shutil.which("npm.cmd") is not None:
-        return "npm.cmd"
-    die("npm не найден в PATH. Установите Node.js 18+ (https://nodejs.org).")
+    names = ["npm"]
+    if os.name == "nt":
+        names += ["npm.cmd", "npm.exe"]
+    return names
+
+
+def resolve_npm() -> str:
+    """Возвращает полный путь к первому найденному npm-исполняемому."""
+    for name in _npm_candidates():
+        found = shutil.which(name)          # which учитывает PATHEXT на Windows
+        if found:
+            return found                     # полный путь снимает зависимость от PATH внутри Popen
+    die(
+        "npm не найден в PATH. Установите Node.js 18+ (https://nodejs.org)\n"
+        "            и перезапустите терминал, чтобы PATH обновился."
+    )
 
 
 def check_node() -> None:
     """Убеждаемся, что Node.js доступен в PATH (npm проверим отдельно)."""
     if shutil.which("node") is None:
         die("node не найден в PATH. Установите Node.js 18+ (https://nodejs.org).")
+
+
+def run_npm(cmd: list[str], **kw) -> subprocess.CompletedProcess:
+    """
+    Единая точка запуска npm с защитой от Windows-специфики.
+
+    Логика: даже если shutil.which нашёл `npm.cmd`, запуск cmd-шимов через
+    subprocess без shell=True на некоторых конфигурациях Windows (ограничения
+    политики, нестандартные PATH) даёт FileNotFoundError [WinError 2].
+    Решение: shell=True позволяет Windows самому резолвить .cmd/.exe по PATHEXT;
+    аргументы передаются списком — Python корректно экранирует их перед
+    конкатенацией в командную строку. На POSIX shell=True безвреден.
+    kw пробрасывается дальше (например, cwd=APP_DIR).
+    """
+    full = [npm_path()] + cmd
+    if os.name == "nt":
+        return subprocess.run(full, shell=True, **kw)
+    return subprocess.run(full, **kw)
+
+
+def npm_path() -> str:
+    """Кэшированный результат resolve_npm() (ищем один раз за запуск)."""
+    global _NPM_PATH
+    if "_NPM_PATH" not in globals():
+        _NPM_PATH = resolve_npm()
+    return _NPM_PATH
 
 
 def ensure_dependencies(npm_cmd: str) -> None:
@@ -84,7 +120,7 @@ def ensure_dependencies(npm_cmd: str) -> None:
         need_install = os.path.getmtime(lock) > os.path.getmtime(modules)
     if need_install:
         print(f"[BONDINVEST] Устанавливаю npm-зависимости ({npm_cmd} install)…")
-        subprocess.run([npm_cmd, "install"], cwd=APP_DIR, check=True)
+        run_npm(["install"], cwd=APP_DIR, check=True)
     else:
         print("[BONDINVEST] Зависимости уже установлены — пропускаю npm install.")
 
@@ -136,14 +172,17 @@ def start_vite_devserver(port: int, npm_cmd: str) -> subprocess.Popen:
     лучше упасть с понятной ошибкой, чем открыть не тот URL.
 
     ВАЖНО про Windows: аргументы вида `--port 3000` нужно передавать npm
-    ЧЕРЕЗ разделитель `--`, иначе сам npm перехватит их как собственные опции
-    и не отдаст скрипту — тогда Vite запустится на дефолтном порту. Поэтому
-    команда собирается списком (без shell=True): список элементов передаётся
-    процессу дословно, спецсимволы PowerShell/cmd не участвуют в разборе.
+    ЧЕРЕЗ разделитель `--`, иначе сам npm перехватит их как собственные опции.
+    Команда запускается через run_npm(): на Windows это shell=True (cmd сам
+    резолвит npm.cmd по PATHEXT — защита от FileNotFoundError [WinError 2]),
+    а список аргументов Python экранирует до конкатенации в строку.
     """
-    cmd = [npm_cmd, "run", "dev", "--", "--port", str(port), "--strictPort"]
-    print(f"[BONDINVEST] Старт Vite: {' '.join(cmd)} (cwd={APP_DIR})")
-    return subprocess.Popen(cmd, cwd=APP_DIR)
+    cmd = ["run", "dev", "--", "--port", str(port), "--strictPort"]
+    print(f"[BONDINVEST] Старт Vite: {npm_cmd} {' '.join(cmd)} (cwd={APP_DIR})")
+    full = [npm_cmd] + cmd
+    if os.name == "nt":
+        return subprocess.Popen(full, cwd=APP_DIR, shell=True)
+    return subprocess.Popen(full, cwd=APP_DIR)
 
 
 def main() -> None:
