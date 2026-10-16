@@ -1,0 +1,7 @@
+﻿Компонент,Назначение,Состояния
+ProgressBar,Визуализация прогресса к цели,"Empty, In Progress, Achieved, Locked"
+GoalCard,Карточка цели,"Active, Achieved, Locked"
+BonusBadge,Иконка бонуса,"Small (+0.2), Medium (+0.3), Large (+0.5)"
+IndexScore,Общий индекс пользователя,"Low (<0.3), Medium (0.3-0.7), High (>0.7)"
+TransactionRow,Транзакция в истории,"Deposit, Withdraw, Bonus"
+AchievementToast,Уведомление о достижении,"Success, Info"
