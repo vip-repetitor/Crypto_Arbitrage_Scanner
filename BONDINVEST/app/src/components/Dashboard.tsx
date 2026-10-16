@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Goal, ProgressBarColor } from '../types';
 import { INDEX_TO_RUB } from '../types';
 import { useDashboard } from '../hooks/useGoals';
+import { useSimulation } from '../hooks/useSimulation';
 import { indexLevel, nextThreshold } from '../utils/calculations';
 import { formatIndex, formatRub } from '../utils/format';
 import { useCountUp } from '../hooks/useAnimations';
@@ -22,6 +23,7 @@ import { GoalCard } from './GoalCard';
 import { ProgressBar } from './ProgressBar';
 import { TransactionRow } from './TransactionRow';
 import { AchievementToast, type AchievementInfo } from './AchievementToast';
+import { SimulationPanel } from './SimulationPanel';
 
 /** Закреплённый цвет прогресс-бара за каждой целью (согласно макету). */
 const GOAL_COLORS: Record<string, ProgressBarColor> = {
@@ -88,6 +90,8 @@ function IndexScoreCard({
 export function Dashboard() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useDashboard();
+  // Тест-симулятор: состояние достижений, пришедших от «рандомного пользователя»
+  const sim = useSimulation();
   // Локальное состояние тоста: null — скрыт; объект — показываем AchievementToast
   const [achievement, setAchievement] = useState<AchievementInfo | null>(null);
 
@@ -183,8 +187,20 @@ export function Dashboard() {
         </ul>
       </section>
 
-      {/* Оверлей достижений: видимость управляется состоянием achievement */}
-      <AchievementToast achievement={achievement} onDismiss={() => setAchievement(null)} />
+      {/* Оверлей достижений: видимость управляется состоянием achievement.
+          Достижение из тест-симулятора (sim.achievement) приоритетнее локального —
+          так конфетти срабатывает именно на «живом» пересечении порога. */}
+      <AchievementToast
+        achievement={sim.achievement ?? achievement}
+        onDismiss={() => {
+          sim.dismissAchievement();
+          setAchievement(null);
+        }}
+      />
+
+      {/* Тестовая панель: имитирует случайные действия пользователя и подгружает
+          обновлённые данные прямо в кэш React Query (без перезагрузки страницы) */}
+      <SimulationPanel />
     </div>
   );
 }
