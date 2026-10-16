@@ -24,8 +24,15 @@ import { mockDashboard } from '../utils/mockData';
 import { createSimulation, type Simulation } from '../utils/simulation';
 import type { AchievementInfo } from '../components/AchievementToast';
 
-/** Интервал автоповтора шага симуляции, мс (выбран так, чтобы анимация 600ms успевала проиграться). */
-const AUTOPLAY_INTERVAL_MS = 1500;
+/** Скорость автосимуляции: 4 действия в секунду (быстрый прогон сценария). */
+const AUTOPLAY_INTERVAL_MS = 250;
+
+/** Пресеты скорости для панели управления (UI выбирает индекс массива). */
+export const SIM_SPEEDS = [
+  { label: '×1', ms: 1000 },
+  { label: '×4', ms: 250 },
+  { label: '×10', ms: 100 },
+] as const;
 
 /** Публичный API хука для компонента SimulationPanel. */
 export interface SimulationApi {
@@ -37,6 +44,10 @@ export interface SimulationApi {
   lastActionText: string | null;
   /** Активное достижение для AchievementToast (null — тост скрыт) */
   achievement: AchievementInfo | null;
+  /** Индекс выбранного пресета скорости (SIM_SPEEDS) */
+  speedIndex: number;
+  /** Сменить скорость автосимуляции (применяется сразу, без перезапуска руками) */
+  setSpeedIndex: (i: number) => void;
   /** Разовый шаг: одно случайное действие (ручной режим) */
   stepOnce: () => void;
   /** Переключить автосимуляцию (on → старт интервала, off → остановка) */
@@ -71,6 +82,8 @@ export function useSimulation(initial: DashboardData = mockDashboard): Simulatio
   const [steps, setSteps] = useState(0);
   const [lastActionText, setLastActionText] = useState<string | null>(null);
   const [achievement, setAchievement] = useState<AchievementInfo | null>(null);
+  // Скорость автосимуляции: индекс пресета SIM_SPEEDS (по умолчанию ×4 — «ускоренный тест»)
+  const [speedIndex, setSpeedIndex] = useState(1);
 
   // Экземпляр симуляции живёт в ref: не пересоздаётся при ререндерах,
   // но доступен из колбэков setInterval без «устаревших замыканий».
@@ -125,16 +138,18 @@ export function useSimulation(initial: DashboardData = mockDashboard): Simulatio
 
   /**
    * Автосимуляция: пока running === true, заводим интервал и делаем первый шаг
-   * сразу (иначе пользователь ждёт 1.5с после нажатия «Пуск»). Cleanup гасит
-   * интервал при выключении/размонтировании — двойных таймеров StrictMode не создаст,
-   * т.к. эффект идемпотентен (интервал хранится локально в замыкании эффекта).
+   * сразу (иначе пользователь ждёт после нажатия «Пуск»). Скорость берётся из
+   * пресета SIM_SPEEDS[speedIndex]; смена скорости во время работы пересоздаёт
+   * интервал (speedIndex в зависимостях эффекта). Cleanup гасит интервал при
+   * выключении/размонтировании — двойных таймеров StrictMode не создаст.
    */
   useEffect(() => {
     if (!running) return;
     doStep();
-    const id = setInterval(doStep, AUTOPLAY_INTERVAL_MS);
+    const intervalMs = SIM_SPEEDS[speedIndex]?.ms ?? AUTOPLAY_INTERVAL_MS;
+    const id = setInterval(doStep, intervalMs);
     return () => clearInterval(id);
-  }, [running, doStep]);
+  }, [running, speedIndex, doStep]);
 
   /** Сброс: удаляем экземпляр и все кэши — страницы заново загрузят чистый мок ТЗ. */
   const reset = useCallback(() => {
@@ -153,6 +168,8 @@ export function useSimulation(initial: DashboardData = mockDashboard): Simulatio
     steps,
     lastActionText,
     achievement,
+    speedIndex,
+    setSpeedIndex,
     stepOnce,
     toggleAutoplay: () => setRunning((r) => !r),
     reset,

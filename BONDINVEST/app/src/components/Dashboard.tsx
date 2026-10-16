@@ -58,35 +58,41 @@ function IndexScoreCard({
   return (
     <section
       aria-label="Общий индекс участия"
-      className="rounded-2xl border border-line bg-white p-6 shadow-card"
+      className="relative overflow-hidden rounded-3xl bg-hero p-6 text-white shadow-premium sm:p-8"
     >
+      {/* Декоративное золотое свечение в углу hero-плитки (чистая эстетика, AT скрыто) */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gold/20 blur-3xl"
+      />
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-muted tabular-nums">
+          <p className="text-sm font-medium tabular-nums text-slate-300">
             🎯 Ваш индекс участия · {levelLabel}
           </p>
-          {/* Крупная цифра 36px/700 tabular-nums: анимированное значение + максимум */}
-          <p className="mt-1 text-4xl font-bold tabular-nums text-ink">
+          {/* Крупная цифра 40px/700 tabular-nums: анимированное значение + максимум.
+              Приём казино/банков: главная метрика — самый крупный элемент экрана */}
+          <p className="mt-1 text-5xl font-bold tabular-nums tracking-tight">
             {formatIndex(animated)}
-            <span className="text-2xl text-muted"> / {formatIndex(maxIndex)}</span>
+            <span className="text-2xl font-semibold text-slate-300"> / {formatIndex(maxIndex)}</span>
           </p>
           {/* Расшифровка цены индекса для пользователя */}
-          <p className="mt-1 text-xs text-muted tabular-nums">
+          <p className="mt-2 text-xs tabular-nums text-slate-300">
             0.1 индекса ≈ +{formatRub(rubPerTenth)}/год · максимум ≈ +{formatRub(
             Math.round(INDEX_TO_RUB * maxIndex * 10) / 10,
           )}/год
           </p>
         </div>
-        <p className="text-right text-sm text-muted">
-          Ожидаемый бонус:
-          <br />
-          <span className="text-lg font-bold tabular-nums text-gold">
+        {/* Ожидаемый бонус — «джекпот-якорь»: сумма в золотом бейдже справа */}
+        <div className="shrink-0 rounded-2xl bg-white/10 px-4 py-3 text-right backdrop-blur-sm ring-1 ring-white/15">
+          <p className="text-xs text-slate-300">Ожидаемый бонус</p>
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-gold-bright">
             ~{formatRub(expectedBonusRub)}/год
-          </span>
-        </p>
+          </p>
+        </div>
       </div>
       {/* Тот же ProgressBar, но крупный (size lg): шкала индекса 0 → maxIndex */}
-      <div className="mt-4">
+      <div className="mt-5">
         <ProgressBar
           current={index}
           target={maxIndex}
@@ -198,10 +204,34 @@ export function Dashboard() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
-      <header>
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
+      {/* Шапка с «успокаивающим» сабхедлайном — приём банков: сразу снимаем
+          главный вопрос клиента («что мне за это будет») прямо в заголовке */}
+      <header className="mb-6">
         <h1 className="text-2xl font-bold text-ink sm:text-3xl">Привет, {data.userName}! 👋</h1>
+        <p className="mt-1 text-sm text-muted">
+          Ваши ОФЗ работают на вас: гарантированные 4% + бонусы за цели — до 10% годовых.
+        </p>
       </header>
+
+      {/* БЫСТРЫЕ МЕТРИКИ (казино/банковский лайфхак): полоса KPI под hero —
+          пользователь за секунду считывает суть продукта не прокручивая экран */}
+      <section aria-label="Ключевые показатели" className="mb-6 grid grid-cols-3 gap-3">
+        {[
+          { label: 'Гарантия', value: '4%', sub: 'годовых, купон ОФЗ' },
+          { label: 'Разблокировано', value: `${achievedCount}/${data.goals.length}`, sub: 'цели выполнено' },
+          { label: 'Максимум', value: '10%', sub: 'при всех бонусах' },
+        ].map((kpi) => (
+          <div
+            key={kpi.label}
+            className="rounded-2xl border border-line/70 bg-white p-3 text-center shadow-card sm:p-4"
+          >
+            <p className="text-lg font-bold tabular-nums text-ink sm:text-2xl">{kpi.value}</p>
+            <p className="text-xs font-semibold text-brand">{kpi.label}</p>
+            <p className="hidden text-xs text-muted sm:block">{kpi.sub}</p>
+          </div>
+        ))}
+      </section>
 
       <IndexScoreCard
         index={data.totalIndex}
@@ -209,14 +239,16 @@ export function Dashboard() {
         expectedBonusRub={data.expectedBonusRub}
       />
 
-      <section aria-label="Ваши цели">
+      <section aria-label="Ваши цели" className="mt-6">
         <h2 className="mb-3 text-xl font-semibold text-ink">
-          Ваши цели{' '}
+          Три цели — три бонуса{' '}
           <span className="text-sm font-normal text-muted">
             ({achievedCount} из {data.goals.length} разблокировано)
           </span>
         </h2>
-        <div className="grid gap-4">
+        {/* ПЛИТОЧНАЯ СЕТКА: 1 колонка на мобильном, 3 плитки в ряд на десктопе.
+            goalPercent/высота карточек выровнены — ряд читается как витрина банка */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.goals.map((goal) => (
             <GoalCard
               key={goal.id}
@@ -234,34 +266,43 @@ export function Dashboard() {
         </div>
       </section>
 
-      {/* Блок «Последние транзакции»: срезаем список до 5 (ТЗ) + переход на полную историю */}
-      <section aria-label="Последние транзакции" className="rounded-2xl border border-line bg-white p-5 shadow-card">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-ink">Последние транзакции</h2>
-          <div className="flex items-center gap-2">
-            {/* UX: быстрый переход к лидерборду — социальное сравнение доходностей */}
-            <button
-              type="button"
-              onClick={() => navigate('/leaderboard')}
-              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-gold transition-colors hover:bg-gold-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-            >
-              📊 Лидерборд
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/history')}
-              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              Смотреть все
-            </button>
+      {/* Двухколоночная сетка нижнего яруса (desktop): транзакции + навигация.
+          На мобильном складывается в одну колонку — mobile-first приоритет */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_auto]">
+        {/* Блок «Последние транзакции»: срезаем список до 5 (ТЗ) + переход на полную историю */}
+        <section aria-label="Последние транзакции" className="rounded-3xl border border-line/70 bg-white p-5 shadow-premium">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-ink">Последние операции</h2>
+            <div className="flex items-center gap-2">
+              {/* UX: быстрый переход к лидерборду — социальное сравнение доходностей */}
+              <button
+                type="button"
+                onClick={() => navigate('/leaderboard')}
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-gold transition-colors hover:bg-gold-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              >
+                📊 Лидерборд
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/history')}
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                Смотреть все
+              </button>
+            </div>
           </div>
-        </div>
-        <ul>
-          {data.transactions.slice(0, 5).map((t) => (
-            <TransactionRow key={t.id} transaction={t} />
-          ))}
-        </ul>
-      </section>
+          <ul>
+            {data.transactions.slice(0, 5).map((t) => (
+              <TransactionRow key={t.id} transaction={t} />
+            ))}
+          </ul>
+        </section>
+
+        {/* Тестовая панель: имитирует случайные действия пользователя и подгружает
+            обновлённые данные прямо в кэш React Query (без перезагрузки страницы).
+            В сетке занимает правую колонку (на мобильном — под транзакциями) */}
+        <SimulationPanel />
+      </div>
 
       {/* Оверлей достижений: видимость управляется состоянием achievement.
           Достижение из тест-симулятора (sim.achievement) приоритетнее локального —
@@ -273,10 +314,6 @@ export function Dashboard() {
           setAchievement(null);
         }}
       />
-
-      {/* Тестовая панель: имитирует случайные действия пользователя и подгружает
-          обновлённые данные прямо в кэш React Query (без перезагрузки страницы) */}
-      <SimulationPanel />
     </div>
   );
 }

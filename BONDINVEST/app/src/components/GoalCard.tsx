@@ -88,15 +88,23 @@ export function GoalCard({
    */
   const weeksToTarget = forecastWeeks(remainingToTarget(progress), ratePerWeek ?? 0);
 
+  /**
+   * Процент прогресса выводим крупным акцентом в правом верхнем углу плитки
+   * (лайфхак онлайн-банков: метрика всегда на виду, считывается за 1 секунду;
+   * казино-паттерн: число растёт → дофаминовый якорь).
+   */
+  const percent = goalPercent(progress);
+
   return (
     <motion.div
       variants={cardAppear}          // появление снизу+fade при монтировании списка
       initial="hidden"
       animate="visible"
-      whileHover={{ y: -4 }}         // микровзаимодействие: поднятие карточки на hover
+      whileHover={{ y: -4, scale: 1.01 }} // премиальный lift: подъём + лёгкий зум
+      whileTap={{ scale: 0.985 }}         // тактильный «отклик нажатия» (mobile-first)
       role="button"                  // интерактивная карточка доступна скринридерам
       tabIndex={0}                   // и gets фокус по Tab (клавиатурная навигация)
-      aria-label={`Цель «${title}». ${meta.label}. Прогресс ${goalPercent(progress)}%. ${hint}`}
+      aria-label={`Цель «${title}». ${meta.label}. Прогресс ${percent}%. ${hint}`}
       onClick={onClick}
       onKeyDown={(e) => {
         // Эмуляция «нативной кнопки»: Enter/Space активируют клик
@@ -105,23 +113,37 @@ export function GoalCard({
           onClick?.();
         }
       }}
-      className={`cursor-pointer rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow duration-200 hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+      className={`group relative cursor-pointer overflow-hidden rounded-3xl border border-line/70 bg-white p-5 shadow-premium transition-shadow duration-200 hover:shadow-premium-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
         pulse ? 'animate-pulseGlow' : ''
-      }`}
+      } ${status === 'achieved' ? 'bg-golddim' : ''}`}
     >
+      {/* Тонкая цветная кромка слева — визуальная «якорная» раскраска плитки
+          (приём Т-Банка: каждый продукт имеет свой цветовой след) */}
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 w-1 rounded-l-3xl ${
+          color === 'gold' ? 'bg-gold' : color === 'success' ? 'bg-success' : 'bg-brand'
+        }`}
+      />
       {/* Шапка: иконка (декоративная, скрыта от AT) + название + бейдж статуса */}
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
-          <span aria-hidden="true" className="text-xl">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3">
+          {/* Иконка в «капсуле» с подложкой — крупный читаемый глиф (Т-Банк стилистика) */}
+          <span
+            aria-hidden="true"
+            className="grid h-11 w-11 place-items-center rounded-2xl bg-surface text-2xl shadow-inner transition-transform duration-200 group-hover:scale-110"
+          >
             {icon}
           </span>
-          {title.toUpperCase()}
-        </h3>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${meta.cls}`}
-        >
-          {meta.label}
-        </span>
+          <div>
+            <h3 className="text-base font-semibold uppercase tracking-wide text-ink">{title}</h3>
+            {/* В шапке — только название: текстовый маркер статуса живёт в чипе под баром (без дублей) */}
+          </div>
+        </div>
+        {/* Крупный процент — быстрый скан метрики (tabular-nums: цифры не прыгают) */}
+        <p className="text-2xl font-bold tabular-nums text-ink" aria-hidden="true">
+          {percent}%
+        </p>
       </div>
 
       {/* Прогресс-бар: подпись вида «1 500 ₽ / 2 000 ₽» формируется форматтером */}
@@ -137,13 +159,16 @@ export function GoalCard({
         ariaLabel={`Прогресс цели ${title}`}
       />
 
-      {/* Бонус к индексу — золотым, tabular-nums для стабильной ширины цифр.
-          Размер бейджа BonusBadge выводится из значения бонуса (4.csv):
-          +0.2 → small, +0.3 → medium, +0.5 → large */}
-      <div className="mt-3 flex items-center justify-between text-sm">
+      {/* Нижняя строка: бонус (золотой бейдж) + статус-чип справа.
+          Чип — ЕДИНСТВЕННЫЙ текстовый маркер статуса в карточке (в шапке теперь
+            только название): скринридер читает статус один раз, дубли нет */}
+      <div className="mt-3 flex items-center justify-between gap-2 text-sm">
         <p className="flex items-center gap-2 font-medium text-muted">
           Бонус: <BonusBadge bonus={bonus} /> к индексу
         </p>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${meta.cls}`}>
+          {meta.label}
+        </span>
       </div>
       {/* Подсказка: «Осталось X» / «До следующего уровня» / «Бонус активен!» */}
       <p className="mt-1 text-sm text-muted">{hint}</p>

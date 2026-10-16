@@ -31,11 +31,14 @@ interface ProgressBarProps {
   size?: 'md' | 'lg';
 }
 
-/** Маппинг семантического цвета на Tailwind-класс заливки (токены заданы в tailwind.config.js). */
-const FILL_COLORS: Record<ProgressBarColor, string> = {
-  brand: 'bg-brand',
-  success: 'bg-success',
-  gold: 'bg-gold',
+/**
+ * Маппинг семантического цвета на градиентные классы заливки (токены в tailwind.config.js).
+ * Используется и в track-подсветке, и в glow; сам градиент собирается рядом с баром.
+ */
+const FILL_GRADIENTS: Record<ProgressBarColor, string> = {
+  brand: 'from-brand to-brand-hover',
+  success: 'from-success to-success-bright',
+  gold: 'from-gold to-gold-bright',
 };
 
 /**
@@ -94,11 +97,13 @@ export function ProgressBar({
         } ${height}`}
       >
         {/* Заливка: шаг 2 — анимация ширины 600ms ease-out (ТЗ).
-            data-testid используется юнит-тестами для проверки процента. */}
+            data-testid используется юнит-тестами для проверки процента.
+            bg-gradient-to-r + bright-оттенок — «живой» перелив как в мобильных банках;
+            glow-тень у заливки — казино-приём «светящийся прогресс = выигрыш близко». */}
         <motion.div
           data-testid="progress-fill"
-          className={`${height} rounded-full ${
-            isLocked ? 'bg-line' : FILL_COLORS[color]
+          className={`${height} rounded-full bg-gradient-to-r ${
+            isLocked ? 'bg-line' : FILL_GRADIENTS[color]
           }`}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
