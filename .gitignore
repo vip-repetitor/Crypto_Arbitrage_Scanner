@@ -1,2 +1,4 @@
-/node_modules
-finalData.json
+node_modules/
+dist/
+build/
+*.log
