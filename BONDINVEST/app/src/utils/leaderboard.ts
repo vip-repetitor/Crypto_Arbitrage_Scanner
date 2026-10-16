@@ -11,11 +11,18 @@
  * 3. Индекс участия считается по той же модели, что и Python-модель проекта:
  *       index = base(0.1) + Б(стрейк) + Б(объём) + Б(активность)
  *    где каждый Б — вклад достигнутого порога соответствующей цели.
- * 4. Годовая доходность (%) = гарантированные OFZ-купон (4%) + премия за индекс:
- *       yield = BASE_YIELD + index * YIELD_PER_INDEX_STEP * 0.1
- *    При max index 1.3 → 4% + ~6% ≈ 10% годовых — ровно обещанный максимум.
+ * 4. Годовая доходность (%) считается ПО ФОРМУЛЕ PYTHON-МОДЕЛИ (model.py,
+ *    user_yield_pct) — аудит 2026-10 исправил расхождение калибровок:
+ *       yield = GUARANTEED_YIELD_PCT + index * YIELD_PP_PER_INDEX
+ *    где YIELD_PP_PER_INDEX = INDEX_TO_RUB / 1000 * 100 = 0.75 п.п. на 1.0
+ *    индекса. Паритет с моделью гарантирует: одна и та же строка рейтинга
+ *    и карточка пользователя показывают одинаковые проценты.
+ *    Примечание: полный индекс 1.3 даёт 13.75% — выше маркетингового обещания
+ *    «до ~10%»; это зафиксировано в parity-тесте как известная особенность
+ *    дефолтных весов (маржа при этом падает ниже целевых 3%, см. стресс-тесты).
  * 5. Сумма дохода (₽/год) = deposit * yield / 100.
  */
+import { GUARANTEED_YIELD_PCT, INDEX_TO_RUB, YIELD_PP_PER_INDEX as PP } from '../types';
 
 /** Одна строка лидерборда — агрегированный профиль пользователя. */
 export interface LeaderRow {
@@ -32,10 +39,20 @@ export interface LeaderRow {
   isMe?: boolean;        // подсветка текущего пользователя в UI
 }
 
-/** Базовый купон ОФЗ — гарантия продукта (маркетинг: «гарантированно 4%»). */
-export const BASE_YIELD_PCT = 4;
-/** Сколько процентов даёт один шаг индекса 0.1 (калибровка: 1.3 → ~+6%). */
-export const YIELD_PER_01_STEP = 0.45;
+/** Базовый купон ОФЗ — гарантия продукта («гарантированно 4%»), паритет с model.py. */
+export const BASE_YIELD_PCT = GUARANTEED_YIELD_PCT;
+/**
+ * Сколько п.п. годовых даёт 1.0 индекса участия. Формула паритета с Python:
+ * model.py считает bonus_pp = index * rub_per_index_point / 10 (курс 75 ₽/год
+ * на 1000₽ => 0.75 п.п. за 1.0 индекса). Держим ту же арифметику, чтобы
+ * лидерборд и карточка показывали одинаковые проценты для одного индекса.
+ */
+export const YIELD_PP_PER_INDEX = PP; // единый источник — types.ts (паритет с model.py)
+
+/** Доходность (%) по формуле модели выплат: гарантия + премия за индекс. */
+export function yieldForIndex(index: number): number {
+  return +(BASE_YIELD_PCT + index * YIELD_PP_PER_INDEX).toFixed(2);
+}
 
 /** Вклады порогов целей в индекс (совпадают с model/config.yaml и ТЗ). */
 const INDEX_BASE = 0.1;
@@ -106,8 +123,8 @@ export function generateLeaderboard(count = 20, seed = 20250115, meIndex?: numbe
 
     const index = +(INDEX_BASE + loyalty + volume + activity).toFixed(2);
     const goalsAchieved = Number(loyalty > 0) + Number(volume > 0) + Number(activity > 0);
-    // Доходность: базовые 4% ОФЗ + премия пропорционально индексу
-    const yieldPct = +(BASE_YIELD_PCT + (index / 0.1) * YIELD_PER_01_STEP).toFixed(2);
+    // Доходность: базовые 4% ОФЗ + премия по формуле модели выплат (yieldForIndex)
+    const yieldPct = yieldForIndex(index);
     const yearlyRub = Math.round((deposit * yieldPct) / 100);
 
     rows.push({
@@ -121,7 +138,8 @@ export function generateLeaderboard(count = 20, seed = 20250115, meIndex?: numbe
 
   // Текущий пользователь («Я») добавляется отдельной строкой, если переданы его данные
   if (meIndex !== undefined && meDeposit !== undefined) {
-    const yieldPct = +(BASE_YIELD_PCT + (meIndex / 0.1) * YIELD_PER_01_STEP).toFixed(2);
+    // Строка «Вы» считается той же функцией, что и остальные — паритет гарантирован
+    const yieldPct = yieldForIndex(meIndex);
     rows.push({
       rank: 0, name: 'Вы', avatar: '⭐',
       deposit: meDeposit, weeksHeld: 12, depositsPerMonth: 4, goalsAchieved: 2,

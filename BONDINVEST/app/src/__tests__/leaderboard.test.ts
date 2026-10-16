@@ -50,8 +50,8 @@ describe('generateLeaderboard', () => {
     const me = rows.find((r) => r.isMe);
     expect(me).toBeDefined();
     expect(me?.index).toBe(0.6);
-    // калибровка из ТЗ: индекс 0.6 → 4% + 6 шагов×0.45% = 6.7%
-    expect(me?.yieldPct).toBeCloseTo(6.7, 1);
+    // паритет с model.py user_yield_pct: 0.6 → 4% + 0.6*0.75 = 8.5%
+    expect(me?.yieldPct).toBeCloseTo(8.5, 1);
     expect(rows).toHaveLength(21);
   });
 

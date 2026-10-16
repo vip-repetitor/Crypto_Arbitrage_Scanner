@@ -86,8 +86,22 @@ export interface DashboardData {
   transactions: Transaction[];
 }
 
-/** Курс конвертации индекса участия в рубли (мок): 1.0 индекса ≈ 75 ₽/год. */
+/**
+ * Курс конвертации индекса участия в рубли: 1.0 индекса ≈ 75 ₽/год на 1000₽.
+ * Аудит 2026-10: значение синхронизируется с Python-моделью (model/config.yaml,
+ * rub_per_index_point) — при расхождении запускается parity-тест modelParity.test.ts,
+ * который «краснеет» и не даёт выкатить несогласованный фронт.
+ */
 export const INDEX_TO_RUB = 75;
 
-/** Теоретический максимум индекса: сумма всех максимальных бонусов целей (0.5+0.4+0.3≈1.3). */
+/** Теоретический максимум индекса: base(0.1) + 0.5 + 0.4 + 0.3 = 1.3 (см. config.yaml). */
 export const MAX_PARTICIPATION_INDEX = 1.3;
+
+/**
+ * Сколько п.п. годовых даёт 1.0 индекса участия: rate ₽/год на депозите 1000₽
+ * = rate/1000*100 п.п. = INDEX_TO_RUB/100 (дефолт: 75/100 = 0.75 п.п.).
+ * Паритет с model.py user_yield_pct контролирует modelParity.test.ts.
+ */
+export const YIELD_PP_PER_INDEX = INDEX_TO_RUB / 100;
+/** Гарантированная база продукта («4% годовых», купон ОФЗ) — паритет с model.py. */
+export const GUARANTEED_YIELD_PCT = 4;
