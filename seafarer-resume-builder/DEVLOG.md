@@ -59,3 +59,12 @@
   3) лишний вложенный @media внутри блока @media (max-width:720px) в resumeCss заменён на корректный print-сброс.
 Проверки: node --check OK; скобки CSS сбалансированы (169); регрессия tests/run-tests.js: RESULT 32 passed, 0 failed.
 За пользователем: визуальная проверка в браузере на узком окне (ожидание: 1 колонка ≤760px, ничего не наезжает).
+
+## Этап H — Исправление вёрстки формы (по жалобе пользователя)
+- Симптом: поля Personal/Header «уходили за границы страницы», fieldset.block выглядел пустым.
+- Причина: `float:left; width:100%` на legend + отсутствие явного `display:block` у fieldset —
+  в ряде браузеров содержимое fieldset выталкивалось из потока блока наружу.
+- Исправлено в styles.css: убран float у legend, добавлены display:block для fieldset.block,
+  max-width:100% для .grid-2, width:auto/overflow-wrap для legend.
+- index.html: добавлен for="photoInput" у подписи Photo (доступность).
+- Проверки: node --check OK; тесты 32 passed / 0 failed; JSON OK; conic-gradient не используется.

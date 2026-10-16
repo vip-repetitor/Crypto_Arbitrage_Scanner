@@ -87,12 +87,18 @@ fieldset.block input, fieldset.block select, fieldset.block textarea { box-sizin
 .form-scroll { max-height: calc(100vh - 140px); overflow-y: auto; overflow-x: hidden; }
 
 fieldset.block {
+  display: block;          /* явно: содержимое fieldset всегда остаётся внутри него */
   border: none;
   border-top: 1px solid var(--line);
   margin: 0;
   padding: 18px 22px 20px;
 }
 fieldset.block:first-of-type { border-top: none; }
+/* Заголовок блока (legend).
+   ВАЖНО: здесь НЕ используется float — в старых браузерах float:left у legend
+   выталкивает всё содержимое fieldset вниз/за границы панели, из-за чего поля
+   «уходят за страницу», а сам блок выглядит пустым (баг, который наблюдался).
+   Стандартный flow + padding сверху дают тот же визуальный результат без side-effects. */
 fieldset.block legend {
   font-family: var(--font-serif);
   font-size: 15px;
@@ -100,7 +106,9 @@ fieldset.block legend {
   text-transform: uppercase;
   color: var(--navy-deep);
   padding: 16px 0 4px;
-  float: left; width: 100%;
+  width: auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 fieldset.block legend::after {
   content: "";
@@ -114,7 +122,7 @@ fieldset.block legend::after {
 /* Сетка полей формы.
    2 колонки через minmax(0,1fr) — никогда не сжимаются ниже ширины контейнера
    и не «наезжают» друг на друга; на узких экранах (≤760px) — одна колонка. */
-.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; max-width: 100%; }
 .grid-2 .span-2 { grid-column: 1 / -1; }
 @media (max-width: 760px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
 
