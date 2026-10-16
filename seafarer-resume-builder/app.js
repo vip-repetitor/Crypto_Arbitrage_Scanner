@@ -360,7 +360,7 @@ function renderVessels() {
     ta.style.minHeight = "60px";
     ta.placeholder = "Main responsibilities, machinery operated, notable achievements…";
     ta.value = v.duties || "";
-    ta.addEventListener("input", () => { v.duties = ta.value; scheduleUpdate(); });
+    ta.addEventListener("input", () => { v.duties = ta.value; scheduleUpdate(); updateProgress(); }); // прогресс сразу (UX-P)
     fDuties.append(labD, ta);
     card.appendChild(fDuties);
 
@@ -484,11 +484,15 @@ function duplicateItem(listKey, index) {
 function addItem(listKey, template) {
   syncSimpleFieldsToModel();
   data[listKey].push(Object.assign({}, template));
-  rerenderLists();
+  rerenderLists(); // перерисовывает карточки из модели — поля формы не сбрасываются
   update();
   saveToStorage();
 }
 function rerenderLists() {
+  /* Важно: перед перерисовкой карточек синхронизируем простые поля формы в модель.
+     Иначе renderVessels/renderCerts читают устаревшую `data` и перезаписывают
+     value полей пустыми строками (потеря ввода при «Add vessel»). Этап UX-P. */
+  syncSimpleFieldsToModel();
   renderVessels();
   renderCerts();
   updateProgress(); // состав записей изменился — пересчитываем прогресс (этап UX-P)
@@ -615,7 +619,16 @@ function currentTheme() {
     if (v) t[k] = v;
   });
   // Производные значения (не редактируются пользователем напрямую)
-  t.tableHeadText = "#F3EAD0";                                   // текст thead
+  // Текст thead: в «корпоративных» темах (accent/thead — нейтральные серые)
+  // кремовый не используется; на тёмном thead — белый, на светлом — чернильный цвет
+  const satOf = hex => {
+    const m = normHex(hex); if (!m) return 0;
+    const r = parseInt(m.slice(1, 3), 16), g = parseInt(m.slice(3, 5), 16), b = parseInt(m.slice(5, 7), 16);
+    return (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+  };
+  const corporate = satOf(t.accent) < 0.12 && satOf(t.tableHeadBg) < 0.12;
+  const isLightBg = hex => luminance(hex) > 0.5;   // светлый фон?
+  t.tableHeadText = corporate ? (isLightBg(t.tableHeadBg) ? t.ink : "#FFFFFF") : "#F3EAD0"; // текст thead
   t.headerBgGradEnd = mix(t.headerBg, 0.28);                    // светлее для градиента шапки
   t.accentDeep = mix(t.accent, -0.35);                           // темнее: «металл» для колец/теней
   t.borderSoft = mix(t.bodyBg, -0.13);                          // мягкие границы таблиц/карточек
@@ -643,6 +656,21 @@ const THEME_PRESETS = {
     headerBg: "#1E2B3A", headerText: "#FFFFFF", accent: "#8FA3B8", sectionTitle: "#1E2B3A",
     hairline: "#C6CBD4", bodyBg: "#FFFFFF", ink: "#22303E", muted: "#66788A",
     tableHeadBg: "#33485F", zebra: "#F4F7FA", certBg: "#F2F5F8", footerText: "#66788A"
+  },
+  // Корпоративные строгие палитры: нейтральные серо-синие тона, без золота.
+  // Акцент низконасыщенный — производные цвета (текст thead и т.п.)
+  // подбираются автоматически по светлоте/насыщенности.
+  "slate-corporate": {
+    label: "Slate Corporate",
+    headerBg: "#23272E", headerText: "#FFFFFF", accent: "#8B95A1", sectionTitle: "#23272E",
+    hairline: "#C9CFD6", bodyBg: "#FFFFFF", ink: "#1F242B", muted: "#6A727C",
+    tableHeadBg: "#2E333B", zebra: "#F5F6F8", certBg: "#F7F8FA", footerText: "#6A727C"
+  },
+  "steel-blue": {
+    label: "Steel Blue",
+    headerBg: "#1F3A52", headerText: "#FFFFFF", accent: "#7E97AC", sectionTitle: "#1F3A52",
+    hairline: "#BFCEDB", bodyBg: "#FFFFFF", ink: "#22303C", muted: "#61707E",
+    tableHeadBg: "#2C4E6E", zebra: "#F4F7FA", certBg: "#F3F7FA", footerText: "#61707E"
   }
 };
 
@@ -1240,8 +1268,41 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("printPreviewBtn").addEventListener("click", () => {
-    const f = document.getElementById("preview");
-    try { f.contentWindow.focus(); f.contentWindow.print(); }
-    catch (e) { setStatus("Print is available from the downloaded HTML file instead.", "err"); }
+    // Кроссбраузерная печать превью. Прямой вызов iframe.contentWindow.print()
+    // блокируется Chrome, если фрейм ещё не «печатабельный» (srcdoc-фреймы без
+    // разрешений) или страница не в фокусе — диалог молча не появлялся.
+    // Надёжный способ: Blob с текущим HTML превью -> временный URL -> скрытый
+    // iframe c sandbox="allow-modals allow-scripts allow-same-origin"
+    // (именно allow-modals разрешает window.print() в Chrome) -> print().
+    try {
+      const html = buildResumeHtml(data, true); // standalone-версия: тот же вид, что в скачанном файле
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const frame = document.createElement("iframe");
+      frame.setAttribute("sandbox", "allow-modals allow-scripts allow-same-origin");
+      frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+      frame.title = "Print preview";
+      let done = false;
+      const cleanup = () => {
+        if (done) return; done = true;
+        setTimeout(() => { frame.remove(); URL.revokeObjectURL(url); }, 1500);
+      };
+      frame.onload = () => {
+        try {
+          const w = frame.contentWindow;
+          w.focus();
+          w.addEventListener("afterprint", cleanup, { once: true });
+          w.print();
+          setTimeout(cleanup, 60000); // страховка, если afterprint не выстрелит
+        } catch (e) {
+          cleanup();
+          setStatus("Browser blocked printing from the page. Open \"Print preview\" again or download the HTML file and press Ctrl+P there.", "err");
+        }
+      };
+      document.body.appendChild(frame);
+      frame.src = url;
+    } catch (e) {
+      setStatus("Print is available from the downloaded HTML file instead.", "err");
+    }
   });
 });

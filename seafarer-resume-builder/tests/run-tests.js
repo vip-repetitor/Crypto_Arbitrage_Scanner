@@ -31,7 +31,7 @@ async function waitFor(pred, ms = 3000) {
 function makeDom() {
   const dom = new JSDOM(html, { runScripts: "outside-only", url: "http://localhost/" });
   const w = dom.window;
-  w.eval(appJs.replace("\"use strict\";", "") + "\n;window.__app = { update: update, flush: () => { clearTimeout(saveToStorage._t); saveToStorage._t = null; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }, setDataVesselNames: (a, b) => { data.vessels[0].vesselName = a; if (data.vessels[1]) data.vessels[1].vesselName = b; }, computeProgress: () => computeProgress(), setSimple: (path, val) => { setByPath(data, path, val); updateProgress(); }, setVesselName: (i, v) => { data.vessels[i].vesselName = v; rerenderLists(); } };"); // "use strict" убран: eval-область должна быть доступной тестам
+  w.eval(appJs.replace("\"use strict\";", "") + "\n;window.__app = { update: update, flush: () => { clearTimeout(saveToStorage._t); saveToStorage._t = null; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }, setDataVesselNames: (a, b) => { data.vessels[0].vesselName = a; if (data.vessels[1]) data.vessels[1].vesselName = b; }, computeProgress: () => computeProgress(), setSimple: (path, val) => { setByPath(data, path, val); updateProgress(); }, setVesselName: (i, v) => { data.vessels[i].vesselName = v; rerenderLists(); }, vesselKeysCount: () => VESSEL_KEYS.length };"); // "use strict" убран: eval-область должна быть доступной тестам
   w.document.dispatchEvent(new w.Event("DOMContentLoaded", { bubbles: true }));
   return { dom, w, d: w.document };
 }
@@ -279,15 +279,16 @@ function importFile(w, d, inputId, file) {
     const p1 = w.__app.computeProgress();
     ok(p1.filled === 2 && p1.pct > 0, "заполнено ровно 2 поля (fullName, rank)");
 
-    // Пустая карточка судна: total растёт, filled — нет (процент снижается, но не падает до 0)
+    /* Поведение (этап UX-P): полностью пустые карточки НЕ учитываются вообще
+       (ни filled, ни total), чтобы «Add vessel» без данных не обнулял процент. */
     d.getElementById("addVesselBtn").click();
     const p2 = w.__app.computeProgress();
-    ok(p2.filled === p1.filled && p2.total > p1.total, "пустая карточка судна добавляет только total");
-    // Заполняем vesselName через DOM + input-событие (syncSimpleFieldsToModel подтянет поля формы в модель)
-    d.querySelectorAll("#vesselsList input[type=text]")[0].value = "MV Test";
-    d.querySelectorAll("#vesselsList input[type=text]")[0].dispatchEvent(new w.Event("input", { bubbles: true }));
+    ok(p2.filled === p1.filled && p2.total === p1.total, "пустая карточка судна игнорируется (total не растёт)");
+    // Заполняем vesselName напрямую в модели + перерисовка (input-событие перерисовало бы DOM)
+    w.__app.setVesselName(0, "MV Test");
     const p3 = w.__app.computeProgress();
-    ok(p3.filled === p1.filled + 1, "заполнение vesselName добавляет +1 к прогрессу");
+    ok(p3.filled === p1.filled + 1 && p3.total === p1.total + w.__app.vesselKeysCount(),
+      "заполненная карточка добавляет свои ключи в счётчик (+1 filled)");
 
     // Sample data → высокий процент и полоса шире
     d.getElementById("sampleBtn").click();
