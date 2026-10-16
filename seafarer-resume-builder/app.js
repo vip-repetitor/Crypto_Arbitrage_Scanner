@@ -360,7 +360,7 @@ function renderVessels() {
     ta.style.minHeight = "60px";
     ta.placeholder = "Main responsibilities, machinery operated, notable achievements…";
     ta.value = v.duties || "";
-    ta.addEventListener("input", () => { v.duties = ta.value; scheduleUpdate(); });
+    ta.addEventListener("input", () => { v.duties = ta.value; scheduleUpdate(); updateProgress(); }); // прогресс сразу (UX-P)
     fDuties.append(labD, ta);
     card.appendChild(fDuties);
 
@@ -484,11 +484,15 @@ function duplicateItem(listKey, index) {
 function addItem(listKey, template) {
   syncSimpleFieldsToModel();
   data[listKey].push(Object.assign({}, template));
-  rerenderLists();
+  rerenderLists(); // перерисовывает карточки из модели — поля формы не сбрасываются
   update();
   saveToStorage();
 }
 function rerenderLists() {
+  /* Важно: перед перерисовкой карточек синхронизируем простые поля формы в модель.
+     Иначе renderVessels/renderCerts читают устаревшую `data` и перезаписывают
+     value полей пустыми строками (потеря ввода при «Add vessel»). Этап UX-P. */
+  syncSimpleFieldsToModel();
   renderVessels();
   renderCerts();
   updateProgress(); // состав записей изменился — пересчитываем прогресс (этап UX-P)
