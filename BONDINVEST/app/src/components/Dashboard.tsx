@@ -24,6 +24,8 @@ import { ProgressBar } from './ProgressBar';
 import { TransactionRow } from './TransactionRow';
 import { AchievementToast, type AchievementInfo } from './AchievementToast';
 import { SimulationPanel } from './SimulationPanel';
+// Контентные врезки про сложный процент (см. CompoundInterest.tsx)
+import { CompoundInsight, CompoundCalculator, FaqCompound } from './CompoundInterest';
 
 /** Закреплённый цвет прогресс-бара за каждой целью (согласно макету). */
 const GOAL_COLORS: Record<string, ProgressBarColor> = {
@@ -239,6 +241,12 @@ export function Dashboard() {
         expectedBonusRub={data.expectedBonusRub}
       />
 
+      {/* Контентная врезка про сложный процент — главная мысль рядом с прогрессом:
+          бонус не разовый, а «топливо» капитализации при реинвестировании */}
+      <div className="mt-4">
+        <CompoundInsight />
+      </div>
+
       <section aria-label="Ваши цели" className="mt-6">
         <h2 className="mb-3 text-xl font-semibold text-ink">
           Три цели — три бонуса{' '}
@@ -302,6 +310,14 @@ export function Dashboard() {
             обновлённые данные прямо в кэш React Query (без перезагрузки страницы).
             В сетке занимает правую колонку (на мобильном — под транзакциями) */}
         <SimulationPanel />
+      </div>
+
+      {/* «Математика выгоды»: интерактивный калькулятор сложного процента + FAQ.
+          Считает по живому totalIndex из React Query — после действий симулятора
+          траектория дохода пересчитывается автоматически */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <CompoundCalculator index={data.totalIndex} />
+        <FaqCompound />
       </div>
 
       {/* Оверлей достижений: видимость управляется состоянием achievement.

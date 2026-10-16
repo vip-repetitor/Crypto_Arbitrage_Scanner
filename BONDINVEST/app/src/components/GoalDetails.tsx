@@ -16,6 +16,8 @@ import { useGoal } from '../hooks/useGoals';
 import { achievedThreshold, nextThreshold, remainingToTarget, forecastWeeks, forecastDate } from '../utils/calculations';
 import { formatRub, formatWithUnit } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
+// Контентные врезки про сложный процент: строка капитализации + мысль о уровнях
+import { CompoundInsight, COMPOUND_THOUGHTS } from './CompoundInterest';
 
 /** Те же закреплённые цвета баров, что на дашборде (макет требует консистентности). */
 const GOAL_COLORS: Record<string, ProgressBarColor> = {
@@ -168,6 +170,12 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
             </div>
           )}
         </dl>
+        {/* «Математика выгоды»: сразу после годовой суммы — строка про капитализацию.
+            Бонус не разовый: при реинвестировании следующий год считается от
+            увеличенной базы (см. utils/compound.ts) */}
+        <p className="mt-3 border-t border-gold/25 pt-3 text-sm leading-relaxed text-muted" role="note">
+          📈 {COMPOUND_THOUGHTS.afterAnnual}
+        </p>
       </section>
 
       {/* Секция 4 «Как достичь»: нумерованный список шагов из данных цели */}
@@ -198,6 +206,8 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
           <p className="mt-1 text-base text-muted">
             Осталось: {formatWithUnit(remainingToTarget({ current: data.current, target: next.value }), data.unit)}
           </p>
+          {/* Мысль для карточки уровней: каждый новый бонус — база следующей капитализации */}
+          <p className="mt-2 text-sm leading-relaxed text-muted">{COMPOUND_THOUGHTS.levels}</p>
 
           {/* UX-фича «прогноз» на деталях цели: дата закрытия следующего порога
               при сохранении исторического темпа. forecastWeeks возвращает null,
@@ -219,6 +229,10 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
           })()}
         </section>
       )}
+
+      {/* FAQ про сложный процент: врезка с главной мыслью (тот же компонент,
+          что на дашборде — переиспользование без дублирования текста) */}
+      <CompoundInsight text={COMPOUND_THOUGHTS.faq20weeks} />
 
       {/* CTA-кнопка целевого действия (в демо — без обработчика: нет платёжного бэкенда) */}
       <button
