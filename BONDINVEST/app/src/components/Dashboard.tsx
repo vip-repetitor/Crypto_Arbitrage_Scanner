@@ -26,6 +26,8 @@ import { AchievementToast, type AchievementInfo } from './AchievementToast';
 import { SimulationPanel } from './SimulationPanel';
 // Контентные врезки про сложный процент (см. CompoundInterest.tsx)
 import { CompoundInsight, CompoundCalculator, FaqCompound } from './CompoundInterest';
+// Интерактивный график «текущая vs максимальная прибыль» (см. ProfitChart.tsx)
+import { ProfitChart } from './ProfitChart';
 
 /** Закреплённый цвет прогресс-бара за каждой целью (согласно макету). */
 const GOAL_COLORS: Record<string, ProgressBarColor> = {
@@ -310,6 +312,13 @@ export function Dashboard() {
             обновлённые данные прямо в кэш React Query (без перезагрузки страницы).
             В сетке занимает правую колонку (на мобильном — под транзакциями) */}
         <SimulationPanel />
+      </div>
+
+      {/* Интерактивный график прибыли: текущая траектория дохода (живой totalIndex)
+          против максимальной при индексе 1.3, с капитализацией по нашей модели.
+          Обновляется в реальном времени при действиях тест-симулятора. */}
+      <div className="mt-6">
+        <ProfitChart currentIndex={data.totalIndex} />
       </div>
 
       {/* «Математика выгоды»: интерактивный калькулятор сложного процента + FAQ.
