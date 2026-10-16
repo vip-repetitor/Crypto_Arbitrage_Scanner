@@ -18,6 +18,22 @@ import { CALC_META } from '../utils/seo';
 import { INDEX_TO_RUB } from '../types';
 import { projectCompound, type CompoundYearRow } from '../utils/compound';
 import { formatRub } from '../utils/format';
+// SEO- wave 2: структурированные данные страницы + компонент вставки в head
+import { JsonLd } from './JsonLd';
+import {
+  breadcrumbSchema,
+  faqPageSchema,
+  financialProductSchema,
+  FAQ_ITEMS,
+} from '../utils/structuredData';
+
+/** Стабильные ссылки на схемы: пересоздание объектов на каждый рендер заставило
+ * бы JsonLd выгружать и монтировать <script> заново при каждом движении слайдера. */
+const PAGE_SCHEMAS = [
+  financialProductSchema(),
+  faqPageSchema(FAQ_ITEMS),
+  breadcrumbSchema([{ name: 'Главная', path: '/' }, { name: 'Калькулятор сложного процента', path: '/calc' }]),
+];
 
 /** Годовая ставка по умолчанию = гарантия 4% (база продукта без бонусов). */
 const DEFAULT_RATE_PCT = 4;
@@ -54,6 +70,8 @@ export function CalcPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
+      {/* JSON-LD: FinancialProduct + FAQPage + BreadcrumbList (богатые сниппеты) */}
+      <JsonLd schemas={PAGE_SCHEMAS} />
       {/* Х1 с основным поисковым запросом; текст ниже отвечает на него напрямую */}
       <header>
         <h1 className="text-3xl font-bold text-ink">Калькулятор сложного процента</h1>
@@ -162,6 +180,20 @@ export function CalcPage() {
         >
           Открыть свой индекс участия →
         </Link>
+      </section>
+
+      {/* --- Видимый FAQ: текст СОВПАДАЕТ с faqPageSchema (требование Google:
+           разметка должна отражать контент страницы, иначе rich result снимут) --- */}
+      <section aria-labelledby="faq-h">
+        <h2 id="faq-h" className="text-2xl font-bold text-ink">Частые вопросы</h2>
+        <dl className="mt-4 space-y-4">
+          {FAQ_ITEMS.map((item) => (
+            <div key={item.question} className="rounded-3xl bg-white p-5 shadow-premium">
+              <dt className="text-base font-semibold text-ink">{item.question}</dt>
+              <dd className="mt-1 text-sm text-muted">{item.answer}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* Дисклеймер обязателен для финансовой рекламы (39-ФЗ о рекламе) */}

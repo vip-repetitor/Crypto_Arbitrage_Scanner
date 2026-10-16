@@ -14,10 +14,19 @@ import { HistoryPage } from './components/HistoryPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
 // Публичная SEO-страница: калькулятор сложного процента (главный «трафиковый» роут)
 import { CalcPage } from './components/CalcPage';
+// Глобальный JSON-LD граф сайта (Organization + WebSite): монтируется один раз
+// на уровне приложения, поэтому бренд-панель доступна на всех индексируемых страницах.
+import { JsonLd } from './components/JsonLd';
+import { organizationSchema, websiteSchema } from './utils/structuredData';
+
+/** Стабильные ссылки на массивы схем — чтобы JsonLd не пересоздавал узлы head
+ * при каждом рендере App (зависимость эффекта — сериализация этих объектов). */
+const GLOBAL_SCHEMAS = [organizationSchema(), websiteSchema()];
 
 export function App() {
   return (
     <main className="min-h-screen bg-surface">
+      <JsonLd schemas={GLOBAL_SCHEMAS} />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/goal/:id" element={<GoalDetails />} />
