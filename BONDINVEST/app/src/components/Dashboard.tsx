@@ -24,6 +24,9 @@ import { ProgressBar } from './ProgressBar';
 import { TransactionRow } from './TransactionRow';
 import { AchievementToast, type AchievementInfo } from './AchievementToast';
 import { SimulationPanel } from './SimulationPanel';
+// SEO: динамические метаданные главной страницы (title/description/canonical/OG)
+import { usePageMeta } from '../hooks/useSeo';
+import { HOME_META } from '../utils/seo';
 // Контентные врезки про сложный процент (см. CompoundInterest.tsx)
 import { CompoundInsight, CompoundCalculator, FaqCompound } from './CompoundInterest';
 // Интерактивный график «текущая vs максимальная прибыль» (см. ProfitChart.tsx)
@@ -113,6 +116,8 @@ function IndexScoreCard({
 export function Dashboard() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useDashboard();
+  // SEO: применяем метаданные главной страницы (хук безопасен и до загрузки данных)
+  usePageMeta(HOME_META);
   // Тест-симулятор: состояние достижений, пришедших от «рандомного пользователя»
   const sim = useSimulation();
   // Локальное состояние тоста: null — скрыт; объект — показываем AchievementToast

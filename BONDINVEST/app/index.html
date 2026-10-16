@@ -4,7 +4,67 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="BONDINVEST — индекс участия и прогресс финансовых целей" />
+    <meta name="description" content="BONDINVEST — индекс участия в финансовом продукте на реальных ОФЗ: гарантированные 4% годовых плюс бонусы за лояльность, объём и активность — до 10% с учётом сложного процента. Три цели — три бонуса." />
+
+    <!-- ===== Open Graph / Twitter: превью при шеринге в соцсетях и мессенджерах ===== -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BONDINVEST" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:title" content="BONDINVEST — индекс участия: три цели, три бонуса, до 10% годовых" />
+    <meta property="og:description" content="Инвестиции в реальные ОФЗ с геймификацией: держите депозит, растите объём и активность — индекс участия увеличивает доходность по принципу сложного процента." />
+    <meta property="og:url" content="https://bondinvest.ru/" />
+    <meta property="og:image" content="https://bondinvest.ru/og-cover.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BONDINVEST — индекс участия: три цели, три бонуса" />
+    <meta name="twitter:description" content="Гарантированные 4% годовых на ОФЗ + бонусы за лояльность, объём и активность. До 10% с капитализацией." />
+    <meta name="theme-color" content="#2563EB" />
+    <link rel="canonical" href="https://bondinvest.ru/" />
+
+    <!-- ===== JSON-LD: структурированные данные (FAQPage + FinancialProduct) ===== -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "FinancialProduct",
+          "@id": "https://bondinvest.ru/#product",
+          "name": "BONDINVEST — индекс участия",
+          "description": "Сберегательный продукт на реальных ОФЗ с геймифицированным индексом участия: базовые 4% годовых плюс бонусы за лояльность (удержание), объём (средний депозит) и активность (пополнения).",
+          "currency": "RUB",
+          "url": "https://bondinvest.ru/",
+          "annualPercentage": { "@type": "QuantitativeValue", "minValue": 4, "maxValue": 10, "unitText": "%" },
+          "feesAndCommission": { "@type": "QuantitativeValue", "minValue": 0, "unitText": "₽" }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://bondinvest.ru/faq/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Что такое индекс участия в BONDINVEST?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Это число от 0.0 до 1.3: базовые 0.1 плюс бонусы за три цели — лояльность (+0.3 или +0.5), объём (+0.2 или +0.4) и активность (+0.2 или +0.3). Чем выше индекс, тем больше доходность сверх гарантированных 4% годовых." }
+            },
+            {
+              "@type": "Question",
+              "name": "Зачем держать депозит 20 недель?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Потому что длинный горизонт даёт не только больший бонус (+0.5 вместо +0.3), но и время для эффекта сложного процента: реинвестированный доход приносит новый доход каждый год." }
+            },
+            {
+              "@type": "Question",
+              "name": "Как работает сложный процент с бонусом?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Бонус к индексу — не разовая надбавка. При реинвестировании доход начисляется на сумму вместе с прошлым доходом: 100 000 ₽ × 0,0375% = 37,5 ₽, на второй год база уже 100 037,5 ₽. Маленькая стабильная надбавка со временем усиливает итоговую доходность." }
+            },
+            {
+              "@type": "Question",
+              "name": "Какие гарантии у продукта?",
+              "acceptedAnswer": { "@type": "Answer", "text": "База — государственные облигации (ОФЗ): купон капает ежедневно, номинал защищён, гарантированная ставка 4% годовых. Компания забирает фиксированную маржу 3%, ещё 1% идёт в резерв. Итого источник выплат — 11% доходности ОФЗ." }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

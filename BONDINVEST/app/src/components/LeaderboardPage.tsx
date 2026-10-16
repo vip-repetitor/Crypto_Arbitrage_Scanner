@@ -16,6 +16,9 @@
  * 6. Анимация появления строк через framer-motion stagger (по ТЗ-таймингам);
  *    prefers-reduced-motion отключает анимацию глобальным CSS-правилом.
  */
+import { usePageMeta } from '../hooks/useSeo';
+import { LEADERBOARD_META } from '../utils/seo';
+
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -38,6 +41,7 @@ function compareRows(a: LeaderRow, b: LeaderRow, key: SortKey, dir: 1 | -1): num
 }
 
 export function LeaderboardPage() {
+  usePageMeta(LEADERBOARD_META); // SEO: метаданные страницы лидерборда
   // Читаем кэш дашборда напрямую: данные уже загружены на '/', повторный
   // запрос не нужен — это тот же паттерн, что у GoalDetails (useGoals).
   const qc = useQueryClient();

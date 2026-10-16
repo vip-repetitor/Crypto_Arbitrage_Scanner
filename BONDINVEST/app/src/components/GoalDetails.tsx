@@ -10,6 +10,8 @@
  * после загрузки данных рендер синхронный, все вычисления — чистые функции.
  */
 import { Link, useParams } from 'react-router-dom';
+import { usePageMeta } from '../hooks/useSeo';
+import { goalMeta } from '../utils/seo';
 import type { Goal, ProgressBarColor } from '../types';
 import { INDEX_TO_RUB } from '../types';
 import { useGoal } from '../hooks/useGoals';
@@ -62,6 +64,10 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
 
   // --- Вычисления для всех секций страницы ---
   const color = GOAL_COLORS[data.id] ?? 'brand';
+
+  // SEO: живой title/description цели — пересчитываются при изменении прогресса,
+  // поэтому сниппет в поиске всегда отражает актуальное состояние (12 из 20 недель)
+  usePageMeta(goalMeta(data.title, data.current, data.target, data.unit));
   // Достигнутый уровень: последний порог <= current (даёт текущий бонус)
   const currentLevel = achievedThreshold(data.thresholds, data.current);
   // Ближайший недостиженный порог или null (все закрыты)

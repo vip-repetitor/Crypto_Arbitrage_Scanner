@@ -7,6 +7,9 @@
  * → useMemo-подобная фильтрация на каждом рендере (данные моковые и маленькие,
  * мемоизация не требуется).
  */
+import { usePageMeta } from '../hooks/useSeo';
+import { HISTORY_META } from '../utils/seo';
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { TransactionType } from '../types';
@@ -89,6 +92,7 @@ export async function copyCsvToClipboard(
 
 /** HistoryPage — история бонусов (/history): выплаты, суммы, фильтры, экспорт */
 export function HistoryPage() {
+  usePageMeta(HISTORY_META); // SEO: уникальные метаданные страницы истории
   const navigate = useNavigate();
   const { data, isLoading, error } = useBonusHistory();
   // Состояние выбранного фильтра живёт здесь: сбросится при размонтировании страницы

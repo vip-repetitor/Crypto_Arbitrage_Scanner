@@ -12,6 +12,8 @@ import { Dashboard } from './components/Dashboard';
 import { GoalDetails } from './components/GoalDetails';
 import { HistoryPage } from './components/HistoryPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
+// Публичная SEO-страница: калькулятор сложного процента (главный «трафиковый» роут)
+import { CalcPage } from './components/CalcPage';
 
 export function App() {
   return (
@@ -22,6 +24,8 @@ export function App() {
         <Route path="/history" element={<HistoryPage />} />
         {/* Новая страница: статистика доходностей всех участников + лидерборд */}
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        {/* SEO tool page: индексируется отдельно, воронка → / (регистрация) */}
+        <Route path="/calc" element={<CalcPage />} />
         {/* Фallback: любой неизвестный путь показывает сообщение, а не пустой экран */}
         <Route
           path="*"

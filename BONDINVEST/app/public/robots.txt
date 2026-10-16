@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /goal/
+Disallow: /history
+Disallow: /leaderboard
+
+Sitemap: https://bondinvest.ru/sitemap.xml
