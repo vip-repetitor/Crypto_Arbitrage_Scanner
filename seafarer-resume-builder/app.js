@@ -2,11 +2,14 @@
    Premium Seafarer Resume Builder — логика конструктора.
    Полностью локально: localStorage + Blob-скачивания.
    Итоговый формат резюме: ТОЛЬКО автономный HTML (без DOCX/PDF-веток).
+   Этап UX-H: автосохранение с индикатором, Ctrl+S, Undo для удаления,
+   дублирование записей, модалка помощи, защита от потери данных.
    ============================================================ */
 "use strict";
 
 /* ---------- Константы ---------- */
 const STORAGE_KEY = "seafarer_resume_v1";
+const UNDO_TTL_MS = 8000;                     // окно отмены удаления (этап UX-D)
 const PHOTO_MAX_BYTES = 2 * 1024 * 1024;      // порог «разумного» фото для localStorage
 const PHOTO_RESIZE_LIMIT = 900;               // максимальная сторона после сжатия
 const DEFAULT_FOOTER = "References and original documents available upon request.";
@@ -143,6 +146,17 @@ function setStatus(msg, kind) {
   el.className = "status-line" + (kind ? " " + kind : "");
 }
 
+/* ---------- Индикатор автосохранения (этап UX-B) ----------
+   Кратковременно появляется внизу экрана после каждого автосейва. */
+let savePillTimer = null;
+function showSaved() {
+  const pill = document.getElementById("savePill");
+  if (!pill) return;
+  pill.classList.add("show");
+  clearTimeout(savePillTimer);
+  savePillTimer = setTimeout(() => pill.classList.remove("show"), 1400);
+}
+
 function getByPath(obj, path) {
   return path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
 }
@@ -205,6 +219,7 @@ function renderVessels() {
     actions.append(
       mkBtn("↑", "Move up", false, i === 0, () => { syncAll(); moveItem("vessels", i, -1); }),
       mkBtn("↓", "Move down", false, i === data.vessels.length - 1, () => { syncAll(); moveItem("vessels", i, 1); }),
+      mkBtn("⧉", "Duplicate this vessel", false, false, () => { syncAll(); duplicateItem("vessels", i); }),
       mkBtn("✕", "Remove vessel", true, false, () => { syncAll(); removeItem("vessels", i); })
     );
     head.append(idx, actions);
@@ -272,13 +287,19 @@ function renderCerts() {
     idx.textContent = "Certificate #" + (i + 1);
     const actions = document.createElement("div");
     actions.className = "item-actions";
+    const dup = document.createElement("button");
+    dup.type = "button";
+    dup.className = "icon-btn";
+    dup.textContent = "⧉";
+    dup.title = "Duplicate certificate";
+    dup.addEventListener("click", () => { syncAll(); duplicateItem("certs", i); });
     const rm = document.createElement("button");
     rm.type = "button";
     rm.className = "icon-btn danger";
     rm.textContent = "✕";
     rm.title = "Remove certificate";
     rm.addEventListener("click", () => { syncAll(); removeItem("certs", i); });
-    actions.appendChild(rm);
+    actions.append(dup, rm);
     head.append(idx, actions);
     card.appendChild(head);
 
@@ -310,19 +331,73 @@ function moveItem(listKey, index, dir) {
   [arr[index], arr[j]] = [arr[j], arr[index]];
   rerenderLists();
   update();
+  saveToStorage();
+}
+
+/* ---------- Undo для удалений (этап UX-D) ----------
+   Удаляем сразу, но в статус-баре появляется кнопка «Undo» на ~8 секунд. */
+let undoState = null;   // { listKey, index, item, timer }
+function clearUndo() {
+  if (undoState && undoState.timer) clearTimeout(undoState.timer);
+  undoState = null;
 }
 function removeItem(listKey, index) {
+  clearUndo();
+  const item = data[listKey][index];
   data[listKey].splice(index, 1);
   rerenderLists();
   update();
+  saveToStorage();
+  undoState = { listKey, index, item };
+  undoState.timer = setTimeout(() => { undoState = null; setStatus("Ready.", ""); }, UNDO_TTL_MS);
+  setStatus(`Entry removed.`, "ok");
+  const el = document.getElementById("statusLine");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "undo-btn";
+  btn.textContent = "Undo";
+  btn.addEventListener("click", () => {
+    if (!undoState) return;
+    const { listKey: k, index: i2, item: it } = undoState;
+    clearUndo();
+    data[k].splice(Math.min(i2, data[k].length), 0, it);
+    rerenderLists();
+    update();
+    saveToStorage();
+    setStatus("Removal undone.", "ok");
+  });
+  el.appendChild(document.createTextNode(" "));
+  el.appendChild(btn);
 }
+
+/* Дублирование записи: быстрый ввод однотипных контрактов/ротаций */
+function duplicateItem(listKey, index) {
+  const src = data[listKey][index];
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  data[listKey].splice(index + 1, 0, copy);
+  rerenderLists();
+  update();
+  saveToStorage();
+  setStatus("Entry duplicated below the original.", "ok");
+}
+
 function addItem(listKey, template) {
   syncSimpleFieldsToModel();
   data[listKey].push(Object.assign({}, template));
   rerenderLists();
   update();
+  saveToStorage();
 }
-function rerenderLists() { renderVessels(); renderCerts(); }
+function rerenderLists() {
+  renderVessels();
+  renderCerts();
+  // Кнопки «Duplicate last» активны только когда есть что дублировать
+  const dv = document.getElementById("dupVesselBtn");
+  const dc = document.getElementById("dupCertBtn");
+  if (dv) dv.disabled = data.vessels.length === 0;
+  if (dc) dc.disabled = data.certs.length === 0;
+}
 
 /* Синхронизация всего (простые поля + текущие DOM-состояния списков уже в data) */
 function syncAll() { syncSimpleFieldsToModel(); }
@@ -747,7 +822,7 @@ function resetTheme() {
   setStatus("Block colors reset to the default Navy Gold palette.", "ok");
 }
 
-/* ---------- Live preview (Шаг 6) ---------- */
+/* ---------- Live preview (Шаг 6) + скролл-синхронизация (этап UX-E) ---------- */
 let updateTimer = null;
 function scheduleUpdate() {
   clearTimeout(updateTimer);
@@ -763,19 +838,56 @@ function update() {
   }
 }
 
+// Прокрутка формы плавно «ведёт» превью (коэффициент по высоте контента),
+// чтобы пользователь видел ту же часть резюме, которую редактирует.
+let scrollSyncGuard = false;
+function initScrollSync() {
+  const form = document.querySelector(".form-scroll");
+  const frame = document.getElementById("preview");
+  if (!form || !frame) return;
+  let docHeight = 1;
+  frame.addEventListener("load", () => {
+    try {
+      const d = frame.contentDocument;
+      if (d && d.body) docHeight = Math.max(1, d.body.scrollHeight);
+    } catch (e) { /* sandbox может запретить доступ — синхронизация просто отключится */ }
+  });
+  form.addEventListener("scroll", () => {
+    if (scrollSyncGuard) return;
+    scrollSyncGuard = true;
+    requestAnimationFrame(() => {
+      try {
+        const w = frame.contentWindow;
+        if (!w) return;
+        const vh = frame.clientHeight;
+        const max = Math.max(0, docHeight - vh);
+        const ratio = form.scrollTop / Math.max(1, form.scrollHeight - form.clientHeight);
+        w.scrollTo(0, ratio * max);
+      } catch (e) { /* тихо: не критично */ }
+      scrollSyncGuard = false;
+    });
+  }, { passive: true });
+}
+
 /* ---------- Автосохранение в localStorage (Шаг 7) ---------- */
 function saveToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    // Переполнение хранилища (обычно из-за фото) — сохраняем без фото, не роняя приложение
+  const write = () => {
     try {
-      const copy = JSON.parse(JSON.stringify(data));
-      copy.header.photoDataUrl = "";
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
-      setStatus("Storage limit reached: photo was not auto-saved (it still appears in export this session).", "err");
-    } catch (e2) { /* молча игнорируем — автосохранение не критично */ }
-  }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      showSaved();
+    } catch (e) {
+      // Переполнение хранилища (обычно из-за фото) — сохраняем без фото, не роняя приложение
+      try {
+        const copy = JSON.parse(JSON.stringify(data));
+        copy.header.photoDataUrl = "";
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
+        setStatus("Storage limit reached: photo was not auto-saved (it still appears in export this session).", "err");
+      } catch (e2) { /* молча игнорируем — автосохранение не критично */ }
+    }
+  };
+  // Дебаунс: при быстром вводе пишем в localStorage не чаще, чем раз в 400 мс
+  clearTimeout(saveToStorage._t);
+  saveToStorage._t = setTimeout(write, 400);
 }
 function loadFromStorage() {
   try {
@@ -881,9 +993,20 @@ function exportResumeHtml() {
 }
 
 /* ---------- Очистка и sample ---------- */
+// Есть ли в данных непустые значения (для предупреждения перед очисткой)
+function hasContent() {
+  const d = data;
+  const flat = [d.header.fullName, d.header.rank, d.header.age, d.header.nationality,
+    d.header.passport, d.header.seamanBook, d.header.photoDataUrl, d.aboutMe,
+    d.personal.dob, d.personal.heightWeight, d.personal.englishLevel, d.personal.availableFrom,
+    d.personal.phone, d.personal.email, d.personal.cityCountry, d.personal.totalSeaService,
+    d.footerText].some(s => String(s || "").trim() !== "");
+  return flat || d.vessels.length > 0 || d.certs.length > 0;
+}
 function clearAll() {
   data = emptyData();
   tempPhotoUrl = "";
+  clearUndo();
   fillSimpleFieldsFromModel();
   rerenderLists();
   refreshThemeInputs();
@@ -894,12 +1017,31 @@ function clearAll() {
 function loadSample() {
   data = sampleData();
   tempPhotoUrl = "";
+  clearUndo();
   fillSimpleFieldsFromModel();
   rerenderLists();
   refreshThemeInputs();
   update();
   saveToStorage();
   setStatus("Sample data loaded (all values are synthetic examples).", "ok");
+}
+
+/* ---------- Модальное окно помощи (этап UX-F) ---------- */
+function openHelp() {
+  const m = document.getElementById("helpModal");
+  if (!m) return;
+  m.hidden = false;
+  document.body.classList.add("modal-open");
+  const closeBtn = document.getElementById("helpCloseBtn");
+  if (closeBtn) closeBtn.focus();
+}
+function closeHelp() {
+  const m = document.getElementById("helpModal");
+  if (!m) return;
+  m.hidden = true;
+  document.body.classList.remove("modal-open");
+  const btn = document.getElementById("helpBtn");
+  if (btn) btn.focus();
 }
 
 /* ---------- Инициализация ---------- */
@@ -910,6 +1052,7 @@ document.addEventListener("DOMContentLoaded", () => {
   rerenderLists();
   renderThemeUI();
   update();
+  initScrollSync();
 
   // Автосохранение при вводе простых полей
   document.querySelectorAll("[data-key]").forEach(el => {
@@ -921,6 +1064,12 @@ document.addEventListener("DOMContentLoaded", () => {
     addItem("vessels", { vesselName: "", vesselType: "", rank: "", period: "", duration: "", duties: "" }));
   document.getElementById("addCertBtn").addEventListener("click", () =>
     addItem("certs", { name: "", validUntil: "" }));
+
+  // Дублирование последней записи (этап UX-C)
+  const dupV = document.getElementById("dupVesselBtn");
+  if (dupV) dupV.addEventListener("click", () => { syncAll(); duplicateItem("vessels", data.vessels.length - 1); });
+  const dupC = document.getElementById("dupCertBtn");
+  if (dupC) dupC.addEventListener("click", () => { syncAll(); duplicateItem("certs", data.certs.length - 1); });
 
   // Кнопки пресетов палитр (этап G)
   document.querySelectorAll("[data-preset]").forEach(btn =>
@@ -940,7 +1089,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("sampleBtn").addEventListener("click", loadSample);
   document.getElementById("clearBtn").addEventListener("click", () => {
-    if (confirm("Clear all resume data? This cannot be undone.")) clearAll();
+    // Предупреждение показываем только если действительно есть что терять (этап UX-G)
+    syncAll();
+    if (!hasContent()) { setStatus("There is nothing to clear.", ""); return; }
+    if (confirm("Clear all resume data? This cannot be undone.\nTip: use “Export JSON” first if you want a backup.")) clearAll();
   });
   document.getElementById("exportJsonBtn").addEventListener("click", exportJson);
   document.getElementById("importJsonInput").addEventListener("change", e => {
@@ -948,6 +1100,39 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.value = "";
   });
   document.getElementById("downloadHtmlBtn").addEventListener("click", exportResumeHtml);
+
+  // Верхняя кнопка скачивания (дублирует основную — этап UX-H)
+  const dlTop = document.getElementById("downloadTopBtn");
+  if (dlTop) dlTop.addEventListener("click", exportResumeHtml);
+
+  // Помощь / модалка (этап UX-F) + горячие клавиши (этап UX-A)
+  const helpBtn = document.getElementById("helpBtn");
+  if (helpBtn) helpBtn.addEventListener("click", openHelp);
+  const helpClose = document.getElementById("helpCloseBtn");
+  if (helpClose) helpClose.addEventListener("click", closeHelp);
+  const helpModal = document.getElementById("helpModal");
+  if (helpModal) helpModal.addEventListener("click", e => { if (e.target === helpModal) closeHelp(); });
+
+  document.addEventListener("keydown", e => {
+    // Ctrl/⌘+S — скачать резюме HTML вместо системного «Сохранить страницу»
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && String(e.key).toLowerCase() === "s") {
+      e.preventDefault();
+      exportResumeHtml();
+      return;
+    }
+    if (e.key === "Escape" && helpModal && !helpModal.hidden) closeHelp();
+  });
+
+  // Защита от случайного закрытия вкладки до записи автосохранения (этап UX-G)
+  window.addEventListener("beforeunload", () => {
+    // Если висит незаписанный дебаунс — синхронно дописываем данные
+    if (saveToStorage._t) {
+      clearTimeout(saveToStorage._t);
+      saveToStorage._t = null;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (err) { /* best effort */ }
+    }
+  });
+
   document.getElementById("printPreviewBtn").addEventListener("click", () => {
     const f = document.getElementById("preview");
     try { f.contentWindow.focus(); f.contentWindow.print(); }

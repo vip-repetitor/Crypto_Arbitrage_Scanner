@@ -16,11 +16,22 @@ function ok(cond, msg) {
 
 // Синхронный вызов update() из области eval (function-декларации в eval не попадают в window)
 function forceUpdate(w) { w.eval("update();"); }
+// Принудительная синхронная запись в localStorage (тесты не ждут дебаунс 400 мс)
+function flushStorage(w) { w.__app.flush(); }
+
+async function waitFor(pred, ms = 3000) {
+  const t0 = Date.now();
+  while (!pred()) {
+    if (Date.now() - t0 > ms) return false;
+    await new Promise(r => setTimeout(r, 25));
+  }
+  return true;
+}
 
 function makeDom() {
   const dom = new JSDOM(html, { runScripts: "outside-only", url: "http://localhost/" });
   const w = dom.window;
-  w.eval(appJs.replace("\"use strict\";", "") + "\n;window.__app = { update: update };"); // "use strict" убран: eval-область должна быть доступной тестам
+  w.eval(appJs.replace("\"use strict\";", "") + "\n;window.__app = { update: update, flush: () => { clearTimeout(saveToStorage._t); saveToStorage._t = null; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }, setDataVesselNames: (a, b) => { data.vessels[0].vesselName = a; if (data.vessels[1]) data.vessels[1].vesselName = b; } };"); // "use strict" убран: eval-область должна быть доступной тестам
   w.document.dispatchEvent(new w.Event("DOMContentLoaded", { bubbles: true }));
   return { dom, w, d: w.document };
 }
@@ -69,6 +80,7 @@ function importFile(w, d, inputId, file) {
     inp.dispatchEvent(new w.Event("input", { bubbles: true }));
     forceUpdate(w);
     ok(d.getElementById("preview").srcdoc.includes("--sr-header-bg:#204060"), "цвет блока применён в превью");
+    flushStorage(w);   // автосейв дебаунсится 400 мс — в тесте записываем синхронно
     const saved = JSON.parse(w.localStorage.getItem("seafarer_resume_v1"));
     ok(saved.theme && saved.theme.headerBg === "#204060", "цвет сохранён в localStorage");
   }
@@ -152,6 +164,100 @@ function importFile(w, d, inputId, file) {
     ok(d.querySelectorAll("#vesselsList .item-card").length === 2, "после перемещения записей 2");
     d.querySelector("#vesselsList .icon-btn.danger").click();
     ok(d.querySelectorAll("#vesselsList .item-card").length === 1, "удаление работает");
+  }
+
+  console.log("== Тест 10. UX-H: Undo удаления возвращает запись на место ==");
+  {
+    const { w, d } = makeDom();
+    d.getElementById("addVesselBtn").click();
+    d.getElementById("addVesselBtn").click();
+    const inputs = d.querySelectorAll("#vesselsList input[type=text]");
+    // 5 текстовых полей на карточку: [0..4] — судно 1, [5..9] — судно 2
+    inputs[0].value = "MV First";
+    inputs[5].value = "MV Second";
+    w.__app.setDataVesselNames("MV First", "MV Second"); // значения в модели (input-события не шлем, чтобы не перерисовать DOM)
+    d.querySelector("#vesselsList .icon-btn.danger").click(); // удалить первую запись
+    ok(d.querySelectorAll("#vesselsList .item-card").length === 1, "запись удалена");
+    const undoBtn = d.querySelector("#statusLine .undo-btn");
+    ok(!!undoBtn, "в статус-баре появилась кнопка Undo");
+    undoBtn.click();
+    ok(d.querySelectorAll("#vesselsList .item-card").length === 2, "Undo вернул количество записей");
+    const after = d.querySelectorAll("#vesselsList input[type=text]");
+    ok(after[0].value === "MV First" && after[5].value === "MV Second", "порядок и содержимое восстановлены");
+  }
+
+  console.log("== Тест 11. UX-H: Duplicate создаёт копию сразу после оригинала ==");
+  {
+    const { w, d } = makeDom();
+    d.getElementById("addVesselBtn").click();
+    const inp = d.querySelector("#vesselsList input[type=text]");
+    inp.value = "MV Dup";
+    inp.dispatchEvent(new w.Event("input", { bubbles: true }));
+    const dupBtn = d.querySelectorAll("#vesselsList .icon-btn")[2]; // ⧉ в карточке
+    ok(!!dupBtn, "кнопка дублирования есть в карточке судна");
+    dupBtn.click();
+    const cards = d.querySelectorAll("#vesselsList .item-card");
+    ok(cards.length === 2, "создана копия");
+    ok(cards[1].querySelector("input[type=text]").value === "MV Dup", "копия содержит те же данные");
+    // Кнопка «Duplicate last» под списком активна при непустом списке
+    ok(!d.getElementById("dupVesselBtn").disabled, "Duplicate last активна");
+    d.getElementById("dupVesselBtn").click();
+    ok(d.querySelectorAll("#vesselsList .item-card").length === 3, "дублирование сработало и снизу списка");
+  }
+
+  console.log("== Тест 12. UX-H: Ctrl+S скачивает standalone HTML ==");
+  {
+    const { w, d } = makeDom();
+    d.getElementById("sampleBtn").click();
+    let downloaded = null;
+    w.URL.createObjectURL = (blob) => { blob.text().then(t => { downloaded = t; }); return "blob:y"; };
+    w.URL.revokeObjectURL = () => {};
+    const ev = new w.KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true, cancelable: true });
+    d.dispatchEvent(ev);
+    await new Promise(r => setTimeout(r, 300));
+    ok(ev.defaultPrevented, "стандартное поведение Ctrl+S перехвачено");
+    ok(!!downloaded && /<!DOCTYPE html>/i.test(downloaded), "Ctrl+S сформировал HTML-файл");
+  }
+
+  console.log("== Тест 13. UX-H: модалка помощи открывается/закрывается (Esc) ==");
+  {
+    const { w, d } = makeDom();
+    const m = d.getElementById("helpModal");
+    ok(m.hidden, "модалка скрыта по умолчанию");
+    d.getElementById("helpBtn").click();
+    ok(!m.hidden, "открылась по кнопке Shortcuts");
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    ok(m.hidden, "закрылась по Esc");
+    d.getElementById("helpBtn").click();
+    d.getElementById("helpCloseBtn").click();
+    ok(m.hidden, "закрылась по кнопке ✕");
+  }
+
+  console.log("== Тест 14. UX-H: save-индикатор появляется после автосохранения ==");
+  {
+    const { w, d } = makeDom();
+    d.getElementById("fullName").value = "Pill Test";
+    d.getElementById("fullName").dispatchEvent(new w.Event("input", { bubbles: true }));
+    await new Promise(r => setTimeout(r, 700));   // дебаунс localStorage 400 мс
+    ok(d.getElementById("savePill").classList.contains("show"), "показан индикатор Saved ✓");
+    ok(JSON.parse(w.localStorage.getItem("seafarer_resume_v1")).header.fullName === "Pill Test", "данные записаны (дебаунс)");
+  }
+
+  console.log("== Тест 15. UX-H: Clear на пустой форме не показывает confirm ==");
+  {
+    const { w, d } = makeDom();
+    let asked = false;
+    w.confirm = () => { asked = true; return true; };
+    d.getElementById("clearBtn").click();
+    ok(!asked, "confirm не вызван — чистить нечего");
+    ok(d.getElementById("statusLine").textContent.includes("nothing to clear"), "понятное сообщение");
+    d.getElementById("addVesselBtn").click();
+    d.getElementById("addVesselBtn").click();
+    d.querySelector("#vesselsList .icon-btn.danger").click(); // удалить единственную? нет: 2 записи → останется 1
+    w.confirm = () => { asked = true; return false; };        // пользователь отменил очистку
+    d.getElementById("clearBtn").click();
+    ok(asked, "при наличии данных confirm показан");
+    ok(d.querySelectorAll("#vesselsList .item-card").length === 1, "отмена очистки сохранила данные");
   }
 
   console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
