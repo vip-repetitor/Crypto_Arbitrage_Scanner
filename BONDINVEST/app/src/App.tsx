@@ -11,6 +11,7 @@ import { Route, Routes } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
 import { GoalDetails } from './components/GoalDetails';
 import { HistoryPage } from './components/HistoryPage';
+import { LeaderboardPage } from './components/LeaderboardPage';
 
 export function App() {
   return (
@@ -19,6 +20,8 @@ export function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/goal/:id" element={<GoalDetails />} />
         <Route path="/history" element={<HistoryPage />} />
+        {/* Новая страница: статистика доходностей всех участников + лидерборд */}
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
         {/* Фallback: любой неизвестный путь показывает сообщение, а не пустой экран */}
         <Route
           path="*"

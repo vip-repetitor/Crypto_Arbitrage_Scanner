@@ -238,13 +238,23 @@ export function Dashboard() {
       <section aria-label="Последние транзакции" className="rounded-2xl border border-line bg-white p-5 shadow-card">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-ink">Последние транзакции</h2>
-          <button
-            type="button"
-            onClick={() => navigate('/history')}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            Смотреть все
-          </button>
+          <div className="flex items-center gap-2">
+            {/* UX: быстрый переход к лидерборду — социальное сравнение доходностей */}
+            <button
+              type="button"
+              onClick={() => navigate('/leaderboard')}
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-gold transition-colors hover:bg-gold-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+            >
+              📊 Лидерборд
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/history')}
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              Смотреть все
+            </button>
+          </div>
         </div>
         <ul>
           {data.transactions.slice(0, 5).map((t) => (
