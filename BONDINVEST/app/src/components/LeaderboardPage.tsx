@@ -125,7 +125,7 @@ export function LeaderboardPage() {
         {[
           { label: 'Участников', value: String(stats.users), hint: 'в программе' },
           { label: 'Средняя доходность', value: `${stats.avgYieldPct}%`, hint: 'годовых' },
-          { label: 'Лучшая ставка', value: `${stats.topYieldPct}%`, hint: 'максимум ~10%' },
+          { label: 'Лучшая ставка', value: `${stats.topYieldPct}%`, hint: 'гарантированные 4% + премия за индекс (до 13.75% при максимуме 1.3)' },
           { label: 'Выплаты всем', value: formatRub(stats.totalYearlyRub), hint: 'в год' },
         ].map((c) => (
           <div key={c.label} className="rounded-xl border border-line bg-white p-4 shadow-sm">

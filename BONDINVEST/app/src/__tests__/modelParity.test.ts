@@ -48,11 +48,12 @@ describe('Паритет фронта с Python-моделью (config.yaml)', (
     expect(indexToRub(mockDashboard.totalIndex, INDEX_TO_RUB)).toBe(mockDashboard.expectedBonusRub);
   });
 
-  it('доходность лидерборда == user_yield_pct(model.py): 4% + index*rate/100', () => {
-    // Эталон из model.py user_yield_pct: yield = 4 + index * rate / 100,
-    // где rate = rub_per_index_point (75 ₽/год на 1000₽ => 0.75 п.п. на 1.0 индекса).
-    const pyLike = (index: number) => +(GUARANTEED_YIELD_PCT + (index * modelConfig.rubPerIndexPoint) / 100).toFixed(2);
-    expect(YIELD_PP_PER_INDEX).toBeCloseTo(modelConfig.rubPerIndexPoint / 100, 10);
+  it('доходность лидерборда == user_yield_pct(model.py): 4% + index*rate/10', () => {
+    // Эталон из model.py user_yield_pct: bonus_pp = index * rate / 10 (строка 344),
+    // где rate = rub_per_index_point (75 => 7.5 п.п. на 1.0 индекса; 0.6 -> 8.5%).
+    // Фикс бага аудита: фронт ошибочно делил на 100 вместо 10 — тест это ловит.
+    const pyLike = (index: number) => +(GUARANTEED_YIELD_PCT + (index * modelConfig.rubPerIndexPoint) / 10).toFixed(2);
+    expect(YIELD_PP_PER_INDEX).toBeCloseTo(modelConfig.rubPerIndexPoint / 10, 10);
     expect(BASE_YIELD_PCT).toBe(GUARANTEED_YIELD_PCT);
     for (const idx of [0.1, 0.6, 0.8, 1.3]) {
       expect(yieldForIndex(idx)).toBe(pyLike(idx));

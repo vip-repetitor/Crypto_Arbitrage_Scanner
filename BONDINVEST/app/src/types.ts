@@ -98,10 +98,14 @@ export const INDEX_TO_RUB = 75;
 export const MAX_PARTICIPATION_INDEX = 1.3;
 
 /**
- * Сколько п.п. годовых даёт 1.0 индекса участия: rate ₽/год на депозите 1000₽
- * = rate/1000*100 п.п. = INDEX_TO_RUB/100 (дефолт: 75/100 = 0.75 п.п.).
- * Паритет с model.py user_yield_pct контролирует modelParity.test.ts.
+ * Сколько п.п. годовых даёт 1.0 индекса участия. ВНИМАНИЕ (фикс бага аудита
+ * 2026-10): rate ₽/год на базе 1000₽ — это НЕ rate/100 п.п., потому что
+ * модель продукта нормирует бонус на 1000₽ иначе: source of truth — Python
+ * model.py user_yield_pct: bonus_pp = index * rub_per_index_point / 10.
+ * При дефолтном rate=75 => 7.5 п.п. на 1.0 индекса (индекс 0.6 -> 8.5% годовых,
+ * индекс 0.8 -> 10% — совпадает с маркетинговым «до 10%»).
+ * Паритет с model.py жёстко контролирует modelParity.test.ts.
  */
-export const YIELD_PP_PER_INDEX = INDEX_TO_RUB / 100;
+export const YIELD_PP_PER_INDEX = INDEX_TO_RUB / 10;
 /** Гарантированная база продукта («4% годовых», купон ОФЗ) — паритет с model.py. */
 export const GUARANTEED_YIELD_PCT = 4;
