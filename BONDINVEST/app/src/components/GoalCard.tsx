@@ -12,9 +12,10 @@
  */
 import { motion } from 'framer-motion';
 import type { Goal, ProgressBarColor } from '../types';
-import { goalPercent, shouldPulse } from '../utils/calculations';
+import { goalPercent, remainingToTarget, shouldPulse, forecastWeeks } from '../utils/calculations';
 import { formatWithUnit } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
+import { BonusBadge } from './BonusBadge';
 import { cardAppear } from '../hooks/useAnimations';
 
 interface GoalCardProps {
@@ -26,6 +27,12 @@ interface GoalCardProps {
   hint: string;
   color?: ProgressBarColor;
   onClick?: () => void;
+  /**
+   * UX-фича «прогноз»: средний темп прироста цели (ед./нед) + id цели.
+   * Если передан ratePerWeek > 0 и цель не достигнута — показываем строку
+   * «📈 Прогноз: ~N нед» под подсказкой.
+   */
+  ratePerWeek?: number;
 }
 
 /**
@@ -53,6 +60,7 @@ export function GoalCard({
   hint,
   color = 'brand',
   onClick,
+  ratePerWeek,
 }: GoalCardProps) {
   const meta = STATUS_META[status];
   // shouldPulse требует полный объект Goal, а карточка получает только его «срез» —
@@ -71,6 +79,14 @@ export function GoalCard({
     description: '',
     steps: [],
   });
+
+  /**
+   * UX-фича «прогноз достижения»: считаем недели до целевого значения по
+   * историческому темпу. forecastWeeks возвращает null при нулевом темпе или
+   * уже достигнутой цели — тогда строка прогноза просто не рендерится
+   * (лучше ничего не сказать, чем показать недостоверную дату).
+   */
+  const weeksToTarget = forecastWeeks(remainingToTarget(progress), ratePerWeek ?? 0);
 
   return (
     <motion.div
@@ -121,14 +137,24 @@ export function GoalCard({
         ariaLabel={`Прогресс цели ${title}`}
       />
 
-      {/* Бонус к индексу — золотым, tabular-nums для стабильной ширины цифр */}
+      {/* Бонус к индексу — золотым, tabular-nums для стабильной ширины цифр.
+          Размер бейджа BonusBadge выводится из значения бонуса (4.csv):
+          +0.2 → small, +0.3 → medium, +0.5 → large */}
       <div className="mt-3 flex items-center justify-between text-sm">
-        <p className="font-medium text-muted">
-          Бонус: <span className="font-bold tabular-nums text-gold">{bonus}</span> к индексу
+        <p className="flex items-center gap-2 font-medium text-muted">
+          Бонус: <BonusBadge bonus={bonus} /> к индексу
         </p>
       </div>
       {/* Подсказка: «Осталось X» / «До следующего уровня» / «Бонус активен!» */}
       <p className="mt-1 text-sm text-muted">{hint}</p>
+
+      {/* UX-фича «прогноз»: строка видна только когда темп известен и цель
+          ещё не закрыта; aria-hidden у эмодзи — декоративный маркер. */}
+      {weeksToTarget !== null && (
+        <p className="mt-1 text-sm font-medium text-brand tabular-nums">
+          📈 Прогноз: ~{weeksToTarget} {weeksToTarget === 1 ? 'неделя' : weeksToTarget < 5 ? 'недели' : 'недель'} при текущем темпе
+        </p>
+      )}
     </motion.div>
   );
 }

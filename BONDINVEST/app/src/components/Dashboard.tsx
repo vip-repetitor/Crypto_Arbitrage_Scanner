@@ -10,13 +10,13 @@
  * Пока запрос в полёте — показываем блок role="status" (aria-live polite),
  * чтобы скринридер озвучил загрузку и её окончание. Ошибка — текстовое сообщение.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Goal, ProgressBarColor } from '../types';
 import { INDEX_TO_RUB } from '../types';
 import { useDashboard } from '../hooks/useGoals';
 import { useSimulation } from '../hooks/useSimulation';
-import { indexLevel, nextThreshold } from '../utils/calculations';
+import { indexLevel, nextThreshold, isAlmostAchieved } from '../utils/calculations';
 import { formatIndex, formatRub } from '../utils/format';
 import { useCountUp } from '../hooks/useAnimations';
 import { GoalCard } from './GoalCard';
@@ -48,6 +48,13 @@ function IndexScoreCard({
   const levelLabel =
     level === 'high' ? 'Высокий уровень участия' : level === 'medium' ? 'Средний уровень участия' : 'Начальный уровень участия';
 
+  /**
+   * UX-фича «перевод индекса в деньги»: один шаг индекса (+0.1) ≈ N ₽/год.
+   * Показываем это как пояснение под крупной цифрой — абстрактный индекс
+   * становится понятной мотивацией («+0.2 к индексу ≈ +15₽/год»).
+   */
+  const rubPerTenth = Math.round(INDEX_TO_RUB * 0.1 * 10) / 10;
+
   return (
     <section
       aria-label="Общий индекс участия"
@@ -62,6 +69,12 @@ function IndexScoreCard({
           <p className="mt-1 text-4xl font-bold tabular-nums text-ink">
             {formatIndex(animated)}
             <span className="text-2xl text-muted"> / {formatIndex(maxIndex)}</span>
+          </p>
+          {/* Расшифровка цены индекса для пользователя */}
+          <p className="mt-1 text-xs text-muted tabular-nums">
+            0.1 индекса ≈ +{formatRub(rubPerTenth)}/год · максимум ≈ +{formatRub(
+            Math.round(INDEX_TO_RUB * maxIndex * 10) / 10,
+          )}/год
           </p>
         </div>
         <p className="text-right text-sm text-muted">
@@ -95,11 +108,63 @@ export function Dashboard() {
   // Локальное состояние тоста: null — скрыт; объект — показываем AchievementToast
   const [achievement, setAchievement] = useState<AchievementInfo | null>(null);
 
+  /**
+   * UX-фича «почти достигнута»: мягкое info-напоминание, когда цель в процессе
+   * и прогресс >= 90%. Ref-множество notifiedGoals помнит, о каких целях мы уже
+   * предупреждали, — напоминание показывается ОДИН раз на цель за сессию,
+   * чтобы не спамить при каждой ревалидации React Query.
+   */
+  const notifiedGoals = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!data) return;
+    const almost = data.goals.find((g) => isAlmostAchieved(g) && !notifiedGoals.current.has(g.id));
+    if (almost) {
+      notifiedGoals.current.add(almost.id);
+      // Не перекрываем активный праздничный тост — info показываем только в паузе
+      setAchievement((prev) =>
+        prev
+          ? prev
+          : {
+              goal: almost,
+              bonusRub: 0,
+              nextLevelText: almost.hint,
+              variant: 'info',
+            },
+      );
+    }
+  }, [data]);
+
   if (isLoading) {
-    // role=status + aria-live: AT сообщит и начало, и конец загрузки
+    // UX-фича «скелетоны»: вместо пустого экрана — заглушки по реальной сетке
+    // дашборда (карточка индекса + 3 цели + транзакции). role=status +
+    // aria-live: AT озвучит начало и конец загрузки. shimmer-анимация в CSS,
+    // отключается при prefers-reduced-motion.
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-live="polite">
-        <p className="text-base text-muted">Загрузка данных…</p>
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6" role="status" aria-live="polite">
+        <p className="sr-only">Загрузка данных…</p>
+        {/* Скелет карточки индекса */}
+        <div className="rounded-2xl border border-line bg-white p-6 shadow-card">
+          <div className="skeleton h-4 w-56 rounded" />
+          <div className="skeleton mt-3 h-10 w-40 rounded" />
+          <div className="skeleton mt-5 h-3 w-full rounded-full" />
+        </div>
+        {/* Скелеты трёх целей */}
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-2xl border border-line bg-white p-5 shadow-card">
+            <div className="flex items-center justify-between">
+              <div className="skeleton h-5 w-40 rounded" />
+              <div className="skeleton h-5 w-28 rounded-full" />
+            </div>
+            <div className="skeleton mt-4 h-3 w-full rounded-full" />
+            <div className="skeleton mt-3 h-4 w-48 rounded" />
+          </div>
+        ))}
+        {/* Скелет списка транзакций */}
+        <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton my-2 h-8 w-full rounded" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -162,6 +227,7 @@ export function Dashboard() {
               status={goal.status}
               hint={goal.hint}
               color={GOAL_COLORS[goal.id] ?? 'brand'}
+              ratePerWeek={goal.ratePerWeek}
               onClick={() => openGoal(goal)}
             />
           ))}
@@ -172,13 +238,23 @@ export function Dashboard() {
       <section aria-label="Последние транзакции" className="rounded-2xl border border-line bg-white p-5 shadow-card">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-ink">Последние транзакции</h2>
-          <button
-            type="button"
-            onClick={() => navigate('/history')}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            Смотреть все
-          </button>
+          <div className="flex items-center gap-2">
+            {/* UX: быстрый переход к лидерборду — социальное сравнение доходностей */}
+            <button
+              type="button"
+              onClick={() => navigate('/leaderboard')}
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-gold transition-colors hover:bg-gold-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+            >
+              📊 Лидерборд
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/history')}
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              Смотреть все
+            </button>
+          </div>
         </div>
         <ul>
           {data.transactions.slice(0, 5).map((t) => (

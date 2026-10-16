@@ -82,3 +82,47 @@ export function indexLevel(index: number): 'low' | 'medium' | 'high' {
 export function shouldPulse(goal: Goal): boolean {
   return goal.status === 'in_progress' && goalPercent(goal) > 80;
 }
+
+/**
+ * UX-фича «почти достигнута»: цель в процессе и прогресс >= 90%, но порог
+ * ещё не закрыт. Используется для мягкого напоминания (info-тост), чтобы
+ * подтолкнуть пользователя «дожать» цель. Порог 90% выше порога пульсации
+ * (80%), поэтому напоминание приходит только на финальной прямой.
+ */
+export function isAlmostAchieved(goal: Goal): boolean {
+  return goal.status === 'in_progress' && goalPercent(goal) >= 90;
+}
+
+/**
+ * UX-фича «прогноз достижения». Возвращает текст-оценку, когда цель будет
+ * закрыта, если темп пополнений/удержания сохранится.
+ * Логика: remaining / ratePerWeek = недель до цели; округляем вверх
+ * (Math.ceil — пользователь не должен разочароваться из-за дробной недели).
+ * ratePerWeek <= 0 или цель уже достигнута → null (скрываем блок прогноза,
+ * лучше ничего не сказать, чем соврать).
+ */
+export function forecastWeeks(remaining: number, ratePerWeek: number): number | null {
+  if (ratePerWeek <= 0 || remaining <= 0) return null;
+  return Math.ceil(remaining / ratePerWeek);
+}
+
+/**
+ * Перевод прогноза в календарную дату (недель от now). Возвращает Date,
+ * либо null при некорректных входных данных. Вынесено из компонентов,
+ * чтобы дата-математика была тестируемой и инкапсулированной.
+ */
+export function forecastDate(weeksAhead: number, from: Date = new Date()): Date | null {
+  if (!Number.isFinite(weeksAhead) || weeksAhead < 0) return null;
+  const d = new Date(from.getTime());
+  d.setDate(d.getDate() + Math.round(weeksAhead * 7));
+  return d;
+}
+
+/**
+ * UX-фича «перевод индекса в деньги»: сколько рублей в год даёт
+ * ОДИН шаг индекса участия (напр. +0.2 к индексу ≈ +15 ₽/год при rate 75).
+ * Даёт пользователям понятную мотивацию вместо абстрактного числа.
+ */
+export function rubPerIndexStep(step: number, rate: number): number {
+  return indexToRub(step, rate);
+}

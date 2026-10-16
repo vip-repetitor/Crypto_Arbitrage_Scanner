@@ -76,6 +76,13 @@ export interface AchievementInfo {
   goal: Goal;
   bonusRub: number;
   nextLevelText: string | null;
+  /**
+   * Вариант тоста (4.csv: AchievementToast — Success | Info).
+   * По умолчанию 'success': конфетти + звук (разблокировка бонуса).
+   * 'info' — нейтральное уведомление без праздничной анимации (например,
+   * подсказка о следующем уровне или тестовое событие симулятора).
+   */
+  variant?: 'success' | 'info';
 }
 
 interface AchievementToastProps {
@@ -94,12 +101,16 @@ export function AchievementToast({
   onDismiss,
   soundEnabled = true,
 }: AchievementToastProps) {
+  // Вариант 'info' — информационное уведомление: без конфетти и без звука.
+  // 'success' (по умолчанию) — полный праздничный набор по ТЗ (8.txt).
+  const isSuccess = achievement?.variant !== 'info';
+
   // Эффект-«таймер жизни»: при появлении достижения играем звук и ставим
   // setTimeout на 2000ms для автоскрытия. Cleanup очищает таймер, если тост
   // закрыли раньше кнопкой или компонент размонтировался (нет утечек/дублей).
   useEffect(() => {
     if (!achievement) return;
-    if (soundEnabled) playSuccessChime();
+    if (soundEnabled && achievement.variant !== 'info') playSuccessChime();
     const t = setTimeout(onDismiss, 2000);
     return () => clearTimeout(t);
   }, [achievement, onDismiss, soundEnabled]);
@@ -109,7 +120,7 @@ export function AchievementToast({
     <AnimatePresence>
       {achievement && (
         <>
-          <Confetti />
+          {isSuccess && <Confetti />}
           <motion.div
             role="alert"               // срочное объявление для скринридеров
             aria-live="assertive"
@@ -117,17 +128,23 @@ export function AchievementToast({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-gold/40 bg-white p-5 shadow-card-hover"
+            className={`fixed bottom-6 left-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border bg-white p-5 shadow-card-hover ${
+              isSuccess ? 'border-gold/40' : 'border-line'
+            }`}
           >
             <div className="flex items-start gap-4">
-              {/* Иконка 🎉 с эффектом «поп»: scale 1→1.2→1 за 300ms */}
+              {/* Иконка с эффектом «поп»: scale 1→1.2→1 за 300ms; 🎉 успех / ℹ️ инфо */}
               <motion.span variants={iconPop} initial="hidden" animate="visible" className="text-4xl">
-                🎉
+                {isSuccess ? '🎉' : 'ℹ️'}
               </motion.span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold text-ink">Поздравляем!</h2>
+                <h2 className="text-lg font-bold text-ink">
+                  {isSuccess ? 'Поздравляем!' : 'Информация'}
+                </h2>
                 <p className="mt-0.5 text-base text-muted">
-                  Вы разблокировали бонус за «{achievement.goal.title.toLowerCase()}»!
+                  {isSuccess
+                    ? `Вы разблокировали бонус за «${achievement.goal.title.toLowerCase()}»!`
+                    : `Обновление по цели «${achievement.goal.title.toLowerCase()}»`}
                 </p>
                 {/* Карточка награды: название цели, условие, бонус в индексе и рублях */}
                 <div className="mt-3 rounded-xl bg-gold-soft p-3">

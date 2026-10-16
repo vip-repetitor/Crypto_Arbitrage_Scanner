@@ -71,16 +71,29 @@ class TestFormula(unittest.TestCase):
         self.assertEqual(pi.evaluate_goal("activity", 6).bonus, 0.3)  # второй порог
 
     def test_overachievement_clamped(self):
-        """4 пополнения при цели 3 и 30 недель при потолке 20 — корректный UI."""
+        """4 пополнения при цели 3 и 30 недель при потолке 20 — корректный UI.
+
+        Аудит 2026-10: планка бара = СЛЕДУЮЩИй недостиженный порог, поэтому
+        4/6 пополнений -> 67% (а не «залипшие» 100% до закрытого порога 3);
+        hint честно говорит, сколько осталось до следующего уровня.
+        Когда пороги все закрыты (30 нед при потолке 20) — планка = последний
+        порог, бар 100% с клампом перевыполнения."""
         pi = ParticipationIndex(cfg())
         act = pi.evaluate_goal("activity", 4)
-        self.assertEqual(act.target, 3)          # планка = достигнутый порог (как мок ТЗ 4/3)
-        self.assertEqual(act.percent, 100)       # кламп сверху
+        self.assertEqual(act.target, 6)          # следующий порог — планка бара
+        self.assertEqual(act.percent, 67)        # 4/6 без клампа
         self.assertEqual(act.status, "achieved")
         self.assertEqual(act.hint, "До следующего уровня: 2 пополнений")
+        # Перевыполнение максимального порога клампится в 100%
+        act_max = pi.evaluate_goal("activity", 8)
+        self.assertEqual((act_max.target, act_max.percent), (6, 100))
         loy = pi.evaluate_goal("loyalty", 30)
         self.assertEqual(loy.bonus, 0.5)         # выше макс. порога — не переплата
         self.assertEqual(loy.hint, "Все уровни пройдены 🎉")
+        # Паритет с моком ТЗ: 12 недель -> планка 20, бар 60% (как [████████░░] 12/20)
+        loy12 = pi.evaluate_goal("loyalty", 12)
+        self.assertEqual((loy12.target, loy12.percent, loy12.hint),
+                         (20, 60, "До следующего уровня: 8 недель"))
 
 
 class TestEconomics(unittest.TestCase):
