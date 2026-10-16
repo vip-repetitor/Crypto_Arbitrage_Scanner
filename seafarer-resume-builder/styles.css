@@ -87,12 +87,18 @@ fieldset.block input, fieldset.block select, fieldset.block textarea { box-sizin
 .form-scroll { max-height: calc(100vh - 140px); overflow-y: auto; overflow-x: hidden; }
 
 fieldset.block {
+  display: block;          /* явно: содержимое fieldset всегда остаётся внутри него */
   border: none;
   border-top: 1px solid var(--line);
   margin: 0;
   padding: 18px 22px 20px;
 }
 fieldset.block:first-of-type { border-top: none; }
+/* Заголовок блока (legend).
+   ВАЖНО: здесь НЕ используется float — в старых браузерах float:left у legend
+   выталкивает всё содержимое fieldset вниз/за границы панели, из-за чего поля
+   «уходят за страницу», а сам блок выглядит пустым (баг, который наблюдался).
+   Стандартный flow + padding сверху дают тот же визуальный результат без side-effects. */
 fieldset.block legend {
   font-family: var(--font-serif);
   font-size: 15px;
@@ -100,7 +106,9 @@ fieldset.block legend {
   text-transform: uppercase;
   color: var(--navy-deep);
   padding: 16px 0 4px;
-  float: left; width: 100%;
+  width: auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 fieldset.block legend::after {
   content: "";
@@ -114,7 +122,7 @@ fieldset.block legend::after {
 /* Сетка полей формы.
    2 колонки через minmax(0,1fr) — никогда не сжимаются ниже ширины контейнера
    и не «наезжают» друг на друга; на узких экранах (≤760px) — одна колонка. */
-.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; max-width: 100%; }
 .grid-2 .span-2 { grid-column: 1 / -1; }
 @media (max-width: 760px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
 
@@ -239,9 +247,75 @@ fieldset.block legend::after {
   background: #fbfcfe;
   border-top: 1px solid var(--line);
   min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
-.status-line.ok { color: #1e7d43; }
-.status-line.err { color: #c0392b; }
+.status-line.ok .status-text { color: #1e7d43; }
+.status-line.err .status-text { color: #c0392b; }
+.status-text { flex: 1; min-width: 0; }
+
+/* ---------- Прогресс-бар заполнения резюме (этап UX-P) ---------- */
+.progress-wrap {
+  flex: 0 1 360px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+.progress-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.progress-title {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--navy, #0b1f3a);
+}
+.progress-label { font-size: 11.5px; color: var(--muted); }
+.progress-label.mid  { color: #9a7b1c; }
+.progress-label.done { color: #1e7d43; font-weight: 600; }
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #e8ebf1;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0b1f3a 0%, #2c5282 55%, #c9a227 100%);
+  transition: width .35s ease;
+}
+.progress-status { display: flex; align-items: center; gap: 8px; min-height: 16px; }
+.undo-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gold, #c9a227);
+  background: #fdf8e8;
+  color: #7a5f10;
+  cursor: pointer;
+}
+.undo-btn:hover { background: #f8efcf; }
+@media (max-width: 900px) {
+  /* На узких экранах панель и статус складываются в колонку, чтобы ничего не наезжало */
+  .status-line { flex-direction: column; align-items: stretch; gap: 6px; }
+  .progress-wrap { flex-basis: auto; width: 100%; }
+}
 
 /* ---------- Превью (правая колонка) ---------- */
 .preview-panel { position: sticky; top: 24px; min-width: 0; }
@@ -538,4 +612,105 @@ table.sr-table {
 @media (max-width: 360px) {
   .app-header h1 { font-size: 18px; }
   .btn { padding: 9px 12px; font-size: 12.5px; }
+}
+
+/* ============================================================
+   Этап UX-H: новые элементы интерфейса
+   (строка заголовка с быстрыми действиями, save-индикатор,
+    undo-кнопка, модалка помощи)
+   ============================================================ */
+
+/* Заголовок приложения: текст слева, кнопки справа, перенос на узких */
+.app-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.app-header-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.app-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Плавающий индикатор автосохранения */
+.save-pill {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  background: #1e7d43;
+  color: #fff;
+  font-size: 12.5px;
+  letter-spacing: .4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(10, 25, 45, .28);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.save-pill.show { opacity: 1; transform: translateY(0); }
+
+/* Кнопка Undo в статус-баре */
+.undo-btn {
+  background: none;
+  border: 1px solid var(--gold, #C9A227);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.undo-btn:hover { background: #fffdf5; color: var(--navy-deep, #0B1F3A); }
+
+/* Модальное окно помощи */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(8, 18, 34, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop[hidden] { display: none; }
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(6, 14, 28, .45);
+  overflow: hidden;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #0B1F3A, #12305A);
+  color: #fff;
+}
+.modal-head h2 { margin: 0; font-size: 17px; letter-spacing: .5px; }
+.help-list { margin: 0; padding: 18px 22px 22px 34px; color: #2a3442; font-size: 14px; line-height: 1.65; }
+.help-list li { margin-bottom: 8px; }
+kbd {
+  background: #f2f3f6;
+  border: 1px solid #d8dbe2;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: #0B1F3A;
+  white-space: nowrap;
+}
+body.modal-open { overflow: hidden; }
+
+@media (max-width: 520px) {
+  .app-header-actions .btn { font-size: 12px; padding: 7px 10px; }
+  .save-pill { right: 12px; bottom: 12px; }
 }

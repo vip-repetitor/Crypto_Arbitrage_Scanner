@@ -7,6 +7,7 @@
 - `index.html` — конструктор (форма + live preview)
 - `styles.css` — стили интерфейса и резюме
 - `app.js` — логика: автосохранение, импорт/экспорт JSON, генерация standalone HTML
+- `INSTRUCTIONS.md` — подробная инструкция по использованию
 - `DEVLOG.md` — журнал разработки по этапам
 - `schema.example.json` — пример данных (синтетический placeholder)
 

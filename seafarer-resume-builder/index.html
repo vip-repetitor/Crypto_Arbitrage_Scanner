@@ -10,10 +10,40 @@
 <body>
 
   <header class="app-header">
-    <h1>⚓ Premium <span class="accent">Seafarer</span> Resume Builder</h1>
-    <span class="tagline">Local-only · No registration · Live preview · Export: standalone HTML</span>
+    <div class="app-header-row">
+      <div class="app-header-text">
+        <h1>⚓ Premium <span class="accent">Seafarer</span> Resume Builder</h1>
+        <span class="tagline">Local-only · No registration · Live preview · Export: standalone HTML</span>
+      </div>
+      <!-- Быстрые действия доступны из любой точки страницы (этап UX-H) -->
+      <div class="app-header-actions" role="group" aria-label="Quick actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="helpBtn" title="Keyboard shortcuts">⌨ Shortcuts</button>
+        <button type="button" class="btn btn-gold btn-sm" id="downloadTopBtn" title="Download resume as standalone HTML (Ctrl+S)">⬇ Download HTML</button>
+      </div>
+    </div>
   </header>
   <div class="gold-rule"></div>
+
+  <!-- Плавающий индикатор автосохранения (этап UX-B) -->
+  <div id="savePill" class="save-pill" role="status" aria-live="polite">Saved ✓</div>
+
+  <!-- Модальное окно «Keyboard & help» (этап UX-F) -->
+  <div id="helpModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-head">
+        <h2 id="helpTitle">Keyboard &amp; tips</h2>
+        <button type="button" class="icon-btn" id="helpCloseBtn" aria-label="Close dialog">✕</button>
+      </div>
+      <ul class="help-list">
+        <li><kbd>Ctrl/⌘ + S</kbd> — download the resume as a standalone HTML file</li>
+        <li><kbd>Esc</kbd> — close this dialog</li>
+        <li>Everything is saved automatically to your browser (localStorage); reload restores your data.</li>
+        <li>Use <em>Export JSON</em> to keep a backup and <em>Import JSON</em> to continue on another PC.</li>
+        <li>Photo is resized automatically; if it is too large for autosave you will be warned.</li>
+        <li>The downloaded HTML opens in any browser and prints cleanly (Print → Save as PDF is your own choice).</li>
+      </ul>
+    </div>
+  </div>
 
   <main class="layout">
 
@@ -51,7 +81,7 @@
                 <input type="text" id="seamanBook" data-key="header.seamanBook" placeholder="e.g. SB-000123 (sample)" />
               </div>
               <div class="field">
-                <label>Photo (JPG/PNG)</label>
+                <label for="photoInput">Photo (JPG/PNG)</label>
                 <div class="photo-row">
                   <img id="photoThumb" class="photo-thumb" alt="photo preview" src="" hidden />
                   <div id="photoThumbEmpty" class="photo-thumb empty">No&nbsp;photo</div>
@@ -110,6 +140,7 @@
             <legend>Sea Service Experience</legend>
             <div id="vesselsList"><!-- карточки судов рендерит app.js --></div>
             <button type="button" class="btn btn-outline-gold btn-sm" id="addVesselBtn">+ Add vessel</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="dupVesselBtn" title="Copy the last vessel entry ( handy for rotations / same ship, new rank)" disabled>Duplicate last</button>
           </fieldset>
 
           <!-- 5. Certificates -->
@@ -117,6 +148,7 @@
             <legend>Certificates</legend>
             <div id="certsList"><!-- карточки сертификатов рендерит app.js --></div>
             <button type="button" class="btn btn-outline-gold btn-sm" id="addCertBtn">+ Add certificate</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="dupCertBtn" title="Copy the last certificate entry" disabled>Duplicate last</button>
           </fieldset>
 
           <!-- 6. Footer -->
