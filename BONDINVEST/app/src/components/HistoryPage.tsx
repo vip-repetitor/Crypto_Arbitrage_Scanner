@@ -67,12 +67,37 @@ export function exportCsv(rows: Array<{ date: string; label: string; amount: num
   URL.revokeObjectURL(url);
 }
 
+/**
+ * UX-фича «копирование в буфер обмена»: тот же CSV, что при экспорте, но
+ * кладётся в clipboard (async API). Возвращает true/false — вызывающий код
+ * показывает inline-подтверждение «Скопировано ✓» или «Не удалось скопировать»
+ * (clipboard API недоступен без HTTPS/разрешения браузера — деградируем мягко).
+ */
+export async function copyCsvToClipboard(
+  rows: Array<{ date: string; label: string; amount: number }>,
+): Promise<boolean> {
+  try {
+    const csv = rows
+      .map((r) => `${r.date};${r.label.replace(/;/g, ',')};${String(r.amount).replace('.', ',')}`)
+      .join('\n');
+    await navigator.clipboard.writeText(`Дата;Описание;Сумма\n${csv}`);
+    return true;
+  } catch {
+    return false; // нет доступа к clipboard (http, права) — тихий fallback
+  }
+}
+
 /** HistoryPage — история бонусов (/history): выплаты, суммы, фильтры, экспорт */
 export function HistoryPage() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useBonusHistory();
   // Состояние выбранного фильтра живёт здесь: сбросится при размонтировании страницы
   const [filter, setFilter] = useState<Filter>('all');
+  /**
+   * UX-фича «копирование CSV»: статус подтверждения под кнопкой.
+   * null — ещё не копировали; true/false — результат последней попытки.
+   */
+  const [copyStatus, setCopyStatus] = useState<boolean | null>(null);
 
   if (isLoading) {
     return (
@@ -163,21 +188,50 @@ export function HistoryPage() {
       </section>
 
       {/* Экспортируется именно filtered — пользователь скачивает то, что видит */}
-      <button
-        type="button"
-        onClick={() =>
-          exportCsv(
-            filtered.map((t) => ({
-              date: t.date,
-              label: t.label ?? t.type,
-              amount: t.amount,
-            })),
-          )
-        }
-        className="w-full rounded-xl border border-brand bg-white px-4 py-3 text-base font-bold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
-      >
-        Экспорт в CSV
-      </button>
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() =>
+            exportCsv(
+              filtered.map((t) => ({
+                date: t.date,
+                label: t.label ?? t.type,
+                amount: t.amount,
+              })),
+            )
+          }
+          className="w-full rounded-xl border border-brand bg-white px-4 py-3 text-base font-bold text-brand transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+        >
+          Экспорт в CSV
+        </button>
+
+        {/* UX-фича «копировать CSV»: тот же срез данных, что и экспорт, но в буфер.
+            Inline-подтверждение живёт в aria-live зоне — скринридер озвучит результат. */}
+        <button
+          type="button"
+          onClick={async () => {
+            const ok = await copyCsvToClipboard(
+              filtered.map((t) => ({
+                date: t.date,
+                label: t.label ?? t.type,
+                amount: t.amount,
+              })),
+            );
+            setCopyStatus(ok);
+          }}
+          className="w-full rounded-xl border border-line bg-slate-50 px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          📋 Скопировать таблицу в буфер
+        </button>
+        <p aria-live="polite" className="text-center text-sm tabular-nums">
+          {copyStatus === true && <span className="font-medium text-success">Скопировано ✓</span>}
+          {copyStatus === false && (
+            <span className="font-medium text-danger">
+              Не удалось скопировать — используйте «Экспорт в CSV»
+            </span>
+          )}
+        </p>
+      </div>
 
       {/* Демонстрационный переход между маршрутами (в реальном продукте ссылки были бы на цели выплат) */}
       <p className="text-center text-sm text-muted">

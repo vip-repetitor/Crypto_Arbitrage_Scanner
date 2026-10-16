@@ -13,6 +13,10 @@ import {
   remainingToTarget,
   shouldPulse,
   sumGoalBonus,
+  isAlmostAchieved,
+  forecastWeeks,
+  forecastDate,
+  rubPerIndexStep,
 } from '../utils/calculations';
 import { formatRub, formatIndex, relativeDate } from '../utils/format';
 import { mockGoals } from '../utils/mockData';
@@ -89,5 +93,49 @@ describe('format', () => {
   it('relativeDate: вчера/сегодня относительно мока', () => {
     expect(relativeDate('2025-01-15 14:30')).toMatch(/^Сегодня/);
     expect(relativeDate('2025-01-14 09:00')).toMatch(/^Вчера/);
+  });
+});
+
+/**
+ * UX-фичи (цикл «улучшения пользовательского опыта»): прогноз достижения,
+ * «почти достигнута», перевод индекса в деньги. Тестируем чистые функции —
+ * именно на них завязан рендеринг новых блоков UI.
+ */
+describe('UX: forecastWeeks / forecastDate', () => {
+  it('округляет прогноз вверх: 500₽ при темпе 375₽/нед → 2 недели', () => {
+    expect(forecastWeeks(500, 375)).toBe(2);
+  });
+  it('темпа нет (0) или цель уже закрыта (remaining<=0) → null, блок скрывается', () => {
+    expect(forecastWeeks(500, 0)).toBeNull();
+    expect(forecastWeeks(0, 375)).toBeNull();
+    expect(forecastWeeks(-100, 375)).toBeNull();
+  });
+  it('forecastDate прибавляет N недель к заданной дате', () => {
+    const from = new Date('2026-01-05T00:00:00');
+    const d = forecastDate(2, from);
+    expect(d).not.toBeNull();
+    expect(d!.getTime() - from.getTime()).toBe(14 * 24 * 3600 * 1000);
+  });
+});
+
+describe('UX: isAlmostAchieved (info-напоминание >=90%)', () => {
+  const base: Goal = {
+    id: 'volume', title: 'Объём', icon: '💰', current: 1850, target: 2000,
+    unit: '₽', bonus: '+0.2', status: 'in_progress', hint: '', thresholds: [],
+    description: '', steps: [],
+  };
+  it('92% in_progress → true', () => expect(isAlmostAchieved(base)).toBe(true));
+  it('achieved с тем же прогрессом → false (уже разблокировано)', () =>
+    expect(isAlmostAchieved({ ...base, status: 'achieved' })).toBe(false));
+  it('85% → false (ещё рано напоминать)', () =>
+    expect(isAlmostAchieved({ ...base, current: 1700 })).toBe(false));
+});
+
+describe('UX: rubPerIndexStep (цена шага индекса)', () => {
+  it('+0.2 к индексу ≈ 15₽/год при курсе 75', () => {
+    expect(rubPerIndexStep(0.2, 75)).toBe(15);
+  });
+  it('максимум 1.3 ≈ 97.5₽/год', () => {
+    expect(rubPerIndexStep(1.3, 75)).toBe(97.5);
   });
 });
