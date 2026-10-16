@@ -142,8 +142,26 @@ function val(v, placeholderLabel) {
 
 function setStatus(msg, kind) {
   const el = document.getElementById("statusLine");
-  el.textContent = msg;
+  // statusLine содержит прогресс-бар в начале — не затираем его: текст статуса
+  // живёт во втором дочернем узле (этап UX-P)
+  let textNode = el.querySelector(".status-text");
+  if (!textNode) {
+    textNode = document.createElement("span");
+    textNode.className = "status-text";
+    el.appendChild(textNode);
+  }
+  textNode.textContent = msg;
   el.className = "status-line" + (kind ? " " + kind : "");
+}
+
+// Вставка прогресс-бара в статус-строку (вызывается один раз при init)
+function injectProgressBar() {
+  const el = document.getElementById("statusLine");
+  if (!el || el.querySelector("#progressWrap")) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = progressMarkup(); // служебная статичная разметка, без пользовательских данных
+  const wrap = tmp.firstElementChild;
+  el.insertBefore(wrap, el.firstChild);
 }
 
 /* ---------- Индикатор автосохранения (этап UX-B) ----------
@@ -181,6 +199,73 @@ function fillSimpleFieldsFromModel() {
     el.value = v == null ? "" : v;
   });
   renderPhotoThumb();
+}
+
+/* ---------- HTML-разметка прогресс-бара (этап UX-P) ---------- */
+// Вставляется в начало statusLine программно: если пользователь открыл index.html
+// с кэшированным старым HTML, бар всё равно появится.
+function progressMarkup() {
+  return `
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-top">
+        <span class="progress-title">Resume Completion</span>
+        <span class="progress-label" id="progressLabel">Completion: 0%</span>
+      </div>
+      <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Resume completion progress">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>`;
+}
+
+/* ---------- Прогресс заполнения резюме (этап UX-P) ----------
+   Считаем, сколько содержательных полей заполнено. Footer не учитываем:
+   у него есть значение по умолчанию. Пустая карточка судна/сертификата
+   (все поля пусты) в расчёт не берётся — чтобы «+ Add vessel» не ронял процент. */
+const PROGRESS_SIMPLE_FIELDS = [
+  "header.fullName", "header.rank", "header.age", "header.nationality",
+  "header.passport", "header.seamanBook",
+  "personal.dob", "personal.heightWeight", "personal.englishLevel",
+  "personal.availableFrom", "personal.phone", "personal.email",
+  "personal.cityCountry", "personal.totalSeaService",
+  "aboutMe"
+];
+const VESSEL_KEYS = ["vesselName", "vesselType", "rank", "period", "duration", "duties"];
+const CERT_KEYS = ["name", "validUntil"];
+
+// Возвращает { filled, total, pct }
+function computeProgress() {
+  let filled = 0, total = 0;
+  const nonEmpty = v => typeof v === "string" && v.trim() !== "";
+  PROGRESS_SIMPLE_FIELDS.forEach(p => {
+    total++;
+    if (nonEmpty(getByPath(data, p))) filled++;
+  });
+  if (nonEmpty(data.header && data.header.photoDataUrl)) filled++; // фото — отдельный критерий
+  total++;
+  (data.vessels || []).forEach(v => {
+    if (!VESSEL_KEYS.some(k => nonEmpty(v[k]))) return; // полностью пустая карточка — игнорируем
+    VESSEL_KEYS.forEach(k => { total++; if (nonEmpty(v[k])) filled++; });
+  });
+  (data.certs || []).forEach(c => {
+    if (!CERT_KEYS.some(k => nonEmpty(c[k]))) return;
+    CERT_KEYS.forEach(k => { total++; if (nonEmpty(c[k])) filled++; });
+  });
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  return { filled, total, pct };
+}
+
+// Обновление видимого прогресс-бара (безопасно: не падает, если элементов нет)
+function updateProgress() {
+  const bar = document.getElementById("progressFill");
+  const label = document.getElementById("progressLabel");
+  if (!bar || !label) return;
+  const p = computeProgress();
+  bar.style.width = p.pct + "%";
+  bar.setAttribute("aria-valuenow", String(p.pct));
+  label.textContent = p.pct >= 100
+    ? "Resume complete — ready to download ✓"
+    : "Completion: " + p.pct + "% (" + p.filled + " of " + p.total + " fields filled)";
+  label.className = "progress-label" + (p.pct >= 100 ? " done" : p.pct >= 60 ? " mid" : "");
 }
 
 /* ---------- Рендер карточек судов (Шаг 4) ---------- */
@@ -236,7 +321,7 @@ function renderVessels() {
     ];
     fields.forEach(([key, label, ph]) => {
       const f = document.createElement("div");
-      f.className = "field" + (key === "duration" ? "" : "");
+      f.className = "field";
       const lab = document.createElement("label");
       lab.textContent = label;
       const inp = document.createElement("input");
@@ -351,7 +436,8 @@ function removeItem(listKey, index) {
   undoState = { listKey, index, item };
   undoState.timer = setTimeout(() => { undoState = null; setStatus("Ready.", ""); }, UNDO_TTL_MS);
   setStatus(`Entry removed.`, "ok");
-  const el = document.getElementById("statusLine");
+  // Кнопка Undo добавляется внутрь .status-text, чтобы не перекрывать прогресс-бар (этап UX-P)
+  const textNode = document.querySelector("#statusLine .status-text");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "undo-btn";
@@ -366,8 +452,7 @@ function removeItem(listKey, index) {
     saveToStorage();
     setStatus("Removal undone.", "ok");
   });
-  el.appendChild(document.createTextNode(" "));
-  el.appendChild(btn);
+  if (textNode) { textNode.appendChild(document.createTextNode(" ")); textNode.appendChild(btn); }
 }
 
 /* Дублирование записи: быстрый ввод однотипных контрактов/ротаций */
@@ -392,6 +477,7 @@ function addItem(listKey, template) {
 function rerenderLists() {
   renderVessels();
   renderCerts();
+  updateProgress(); // состав записей изменился — пересчитываем прогресс (этап UX-P)
   // Кнопки «Duplicate last» активны только когда есть что дублировать
   const dv = document.getElementById("dupVesselBtn");
   const dc = document.getElementById("dupCertBtn");
@@ -827,6 +913,7 @@ let updateTimer = null;
 function scheduleUpdate() {
   clearTimeout(updateTimer);
   updateTimer = setTimeout(() => update(), 150);
+  updateProgress(); // прогресс-бар обновляем сразу, без дебаунса (этап UX-P)
   saveToStorage();
 }
 function update() {
@@ -969,6 +1056,7 @@ function importJsonFile(file) {
       data = parsed;
       fillSimpleFieldsFromModel();
       rerenderLists();
+      updateProgress();
       refreshThemeInputs();
       update();
       saveToStorage();
@@ -1011,6 +1099,7 @@ function clearAll() {
   rerenderLists();
   refreshThemeInputs();
   update();
+  updateProgress();
   saveToStorage();
   setStatus("All data cleared.", "ok");
 }
@@ -1022,6 +1111,7 @@ function loadSample() {
   rerenderLists();
   refreshThemeInputs();
   update();
+  updateProgress();
   saveToStorage();
   setStatus("Sample data loaded (all values are synthetic examples).", "ok");
 }
@@ -1047,11 +1137,13 @@ function closeHelp() {
 /* ---------- Инициализация ---------- */
 document.addEventListener("DOMContentLoaded", () => {
   // Восстановление из localStorage
+  injectProgressBar();          // прогресс-бар в статус-строку (этап UX-P)
   loadFromStorage();
   fillSimpleFieldsFromModel();
   rerenderLists();
   renderThemeUI();
   update();
+  updateProgress();
   initScrollSync();
 
   // Автосохранение при вводе простых полей
