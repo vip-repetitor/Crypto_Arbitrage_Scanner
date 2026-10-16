@@ -55,16 +55,17 @@ body {
   opacity: .8;
 }
 
-/* ---------- Компоновка ---------- */
+/* ---------- Компоновка ----------
+   fluid-колонки: minmax(0,...) не даёт сетке вылезать за экран и «наезжать» друг на друга */
 .layout {
   display: grid;
-  grid-template-columns: minmax(420px, 560px) 1fr;
-  gap: 24px;
-  padding: 24px 32px 48px;
+  grid-template-columns: minmax(0, min(560px, 46fr)) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 24px);
+  padding: clamp(12px, 2.5vw, 24px) clamp(12px, 3vw, 32px) 48px;
   align-items: start;
 }
 @media (max-width: 1100px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
 }
 
 .panel {
@@ -72,10 +73,11 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+  min-width: 0; /* grid-защита от переполнения содержимым */
 }
 
 /* ---------- Форма (левая колонка) ---------- */
-.form-scroll { max-height: calc(100vh - 140px); overflow: auto; }
+.form-scroll { max-height: calc(100vh - 140px); overflow-y: auto; overflow-x: hidden; }
 
 fieldset.block {
   border: none;
@@ -102,15 +104,16 @@ fieldset.block legend::after {
   border-radius: 2px;
 }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
-.grid-2 .span-2 { grid-column: span 2; }
-@media (max-width: 520px) { .grid-2 { grid-template-columns: 1fr; } .grid-2 .span-2 { grid-column: auto; } }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px 14px; }
+.grid-2 .span-2 { grid-column: 1 / -1; }
+@media (max-width: 520px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
 
-.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; min-width: 0; }
 .field label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .3px; }
 .field input[type="text"],
 .field input[type="tel"],
 .field input[type="email"],
+.field input[type="date"],
 .field textarea,
 .field select {
   border: 1px solid var(--line);
@@ -122,7 +125,12 @@ fieldset.block legend::after {
   background: #fbfcfe;
   transition: border-color .15s, box-shadow .15s;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
+/* нативные date/select в узких колонках не должны вылезать за контейнер */
+.field input[type="date"] { min-height: 38px; }
+.field select { appearance: none; -webkit-appearance: none; }
 .field textarea { min-height: 96px; resize: vertical; }
 .field input:focus, .field textarea:focus, .field select:focus {
   outline: none;
@@ -224,7 +232,11 @@ fieldset.block legend::after {
 .status-line.err { color: #c0392b; }
 
 /* ---------- Превью (правая колонка) ---------- */
-.preview-panel { position: sticky; top: 24px; }
+.preview-panel { position: sticky; top: 24px; min-width: 0; }
+@media (max-width: 1100px) {
+  /* в одноколоночной раскладке sticky мешает скроллу формы */
+  .preview-panel { position: static; }
+}
 .preview-bar {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 18px;
@@ -236,7 +248,7 @@ fieldset.block legend::after {
 iframe#preview {
   width: 100%;
   height: calc(100vh - 210px);
-  min-height: 640px;
+  min-height: 480px;
   border: none;
   border-radius: 8px;
   background: #fff;
@@ -274,10 +286,13 @@ iframe#preview {
   align-items: center;
 }
 .sr-photo-wrap { flex: 0 0 auto; }
+.sr-id { flex: 1; min-width: 0; } /* long text wraps instead of overflowing */
+.sr-name { overflow-wrap: anywhere; }
 .sr-photo-ring {
   width: 150px; height: 150px; border-radius: 50%;
   padding: 5px;
-  background: conic-gradient(from 210deg, var(--gold), #8a6d1c, var(--gold-soft), var(--gold));
+  /* linear вместо conic: conic-gradient не поддерживается старыми браузерами (этап F) */
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold) 45%, #8a6d1c 75%, var(--gold-soft));
   box-shadow: 0 10px 26px rgba(0,0,0,.35);
 }
 .sr-photo-ring img, .sr-photo-ring .sr-photo-placeholder {
@@ -397,36 +412,21 @@ table.sr-table {
   padding: 12px 16px;
   font-size: 13.5px;
 }
-.sr-cert .cname { font-weight: 600; color: var(--navy-deep); }
-.sr-cert .cvalid { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.sr-cert .cname { font-weight: 600; color: var(--navy-deep); min-width: 0; overflow-wrap: anywhere; }
+.sr-cert .cvalid { color: var(--muted); font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
 .sr-cert .cvalid b { color: #a3801a; }
 
-/* --- Footer: стальной канат --- */
+/* --- Footer (канат убран по решению владельца, этап F): тонкая золотая линия + текст --- */
 .sr-footer { margin-top: 34px; padding: 0 48px 34px; }
-.sr-rope {
-  height: 14px;
-  border-radius: 7px;
-  position: relative;
-  background:
-    repeating-linear-gradient(115deg,
-      #6f7681 0 6px,
-      #aab2bd 6px 9px,
-      #8b939f 9px 14px,
-      #d7dbe0 14px 16px);
-  box-shadow: inset 0 3px 5px rgba(255,255,255,.55), inset 0 -4px 6px rgba(0,0,0,.35), 0 4px 10px rgba(11,31,58,.18);
+.sr-footer-rule {
+  height: 2px;
+  border-radius: 2px;
+  margin: 0 0 16px;
+  background: linear-gradient(90deg, transparent, var(--gold) 15%, var(--gold-soft) 50%, var(--gold) 85%, transparent);
 }
-.sr-rope::before, .sr-rope::after {
-  content: "";
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 22px; height: 22px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #e8ebef, #7d8590 60%, #4a515b);
-  box-shadow: 0 2px 5px rgba(0,0,0,.3);
-}
-.sr-rope::before { left: -11px; }
-.sr-rope::after { right: -11px; }
 .sr-footer-text {
   text-align: center;
-  margin: 16px 0 0;
+  margin: 0;
   font-family: var(--font-serif);
   font-size: 13.5px;
   letter-spacing: 1.5px;
@@ -441,4 +441,51 @@ table.sr-table {
   .sr-section { padding: 22px 34px 6px; }
   .sr-header { padding: 30px 34px 26px; }
   .sr-footer { padding: 0 34px 24px; }
+}
+
+/* ---------- Адаптив UI конструктора (этап F) ----------
+   Планшет: форма и превью в один столбец, снимаем sticky-скролл формы */
+@media (max-width: 1100px) {
+  .form-scroll { max-height: none; }
+  iframe#preview { height: 78vh; }
+}
+
+/* Средний/компактный экран */
+@media (max-width: 900px) {
+  .app-header { padding: 20px 18px 14px; gap: 10px; }
+  .app-header h1 { font-size: 21px; }
+  fieldset.block { padding: 16px 16px 18px; }
+  .toolbar { padding: 14px 16px; }
+  .status-line { padding: 8px 16px; }
+  .sr-header { padding: 34px 28px 30px; }
+  .sr-section { padding: 26px 28px 8px; }
+  .sr-footer { padding: 0 28px 28px; }
+}
+
+/* Мобильный: все сетки формы — в одну колонку, кнопки тулбара — на всю ширину */
+@media (max-width: 520px) {
+  .layout { padding-left: 10px; padding-right: 10px; }
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .photo-row { flex-wrap: wrap; }
+  .item-card-head { flex-wrap: wrap; gap: 8px; }
+  .toolbar .btn { flex: 1 1 auto; text-align: center; }
+  .toolbar .spacer { display: none; }
+  .preview-frame-wrap { padding: 10px; }
+  iframe#preview { height: 70vh; min-height: 380px; }
+  .sr-header { flex-direction: column; align-items: flex-start; gap: 20px; padding: 28px 20px 24px; }
+  .sr-name { font-size: 26px; }
+  .sr-rank { font-size: 13px; letter-spacing: 2px; margin-bottom: 12px; }
+  .sr-photo-ring { width: 112px; height: 112px; }
+  .sr-section { padding: 22px 20px 6px; }
+  .sr-certs { grid-template-columns: minmax(0, 1fr); }
+  .sr-info-grid { grid-template-columns: minmax(0, 1fr); }
+  .sr-table { font-size: 12px; }
+  .sr-table thead th, .sr-table tbody td { padding: 9px 10px; }
+  .sr-footer { padding: 0 20px 22px; }
+}
+
+/* Очень узкие экраны */
+@media (max-width: 360px) {
+  .app-header h1 { font-size: 18px; }
+  .btn { padding: 9px 12px; font-size: 12.5px; }
 }

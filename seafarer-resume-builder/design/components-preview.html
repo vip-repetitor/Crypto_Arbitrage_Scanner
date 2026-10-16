@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<!-- ============================================================
+     components-preview.html — визуальная галерея premium-компонентов
+     Открывается локально двойным кликом, без сервера и интернета.
+     Показывает 6 компонентов в трёх палитрах (переключатель сверху).
+     Текст резюме — английский. Это НЕ экспорт резюме, а превью дизайн-системы.
+     ============================================================ -->
+<html lang="en" data-theme="navy-gold">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Premium Components Preview — Seafarer Resume Design System</title>
+<link rel="stylesheet" href="premium.css">
+<style>
+  /* Стили только для обёртки-превью (не входят в само резюме) */
+  body { margin: 0; font-family: var(--t-font-body); background: var(--t-bg-page); color: var(--t-text-primary); }
+  .toolbar { position: sticky; top: 0; z-index: 5; background: var(--t-header-from); padding: 14px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: var(--t-shadow-ambient); }
+  .toolbar span { color: var(--t-accent-on-dark); letter-spacing: 2px; text-transform: uppercase; font-size: 12px; }
+  .toolbar button { border: 1px solid var(--t-accent); background: transparent; color: #fff; padding: 7px 16px; border-radius: var(--t-radius-pill); cursor: pointer; font-size: 13px; }
+  .toolbar button.active { background: var(--t-accent); color: var(--t-header-from); font-weight: 700; }
+  .stage { max-width: 980px; margin: 24px auto 64px; padding: 0 16px; }
+  .demo-label { font-size: 11.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--t-text-secondary); margin: 34px 4px 10px; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span>Palette:</span>
+  <button data-p="navy-gold" class="active">Navy Gold</button>
+  <button data-p="black-champagne">Black Champagne</button>
+  <button data-p="ocean-platinum">Ocean Platinum</button>
+</div>
+
+<div class="stage">
+
+  <!-- КОМПОНЕНТ 1+2: RESUME HEADER + SECTION TITLE -->
+  <div class="demo-label">01 · Resume Header / 02 · Section Title</div>
+  <div class="sr-page">
+    <header class="sr-header">
+      <div class="sr-photo-ring"><div class="sr-photo-placeholder">Photo</div></div>
+      <div class="sr-id">
+        <h1 class="sr-name">Ivan A. Petrov</h1> <!-- пример-плейсхолдер -->
+        <p class="sr-rank">Chief Engineer</p>
+        <div class="sr-pills">
+          <span class="sr-pill"><b>Age</b>41</span>
+          <span class="sr-pill"><b>Nationality</b>Croatian</span>
+          <span class="sr-pill"><b>Passport</b>[PASSPORT]</span>
+          <span class="sr-pill"><b>Seaman Book</b>SB-0000000</span>
+        </div>
+      </div>
+    </header>
+    <div class="sr-hairline"></div>
+
+    <section class="sr-section">
+      <h2 class="sr-section-title">About Me</h2>
+      <div class="sr-section-sub"></div>
+      <p class="sr-about-text">Sample placeholder text demonstrating the About Me typography: comfortable line length, generous line-height and a calm editorial tone.</p>
+    </section>
+
+    <!-- КОМПОНЕНТ 3: PERSONAL INFO GRID -->
+    <section class="sr-section">
+      <h2 class="sr-section-title">Personal Information</h2>
+      <div class="sr-section-sub"></div>
+      <div class="sr-info-grid">
+        <div class="sr-info-item"><span class="k">Date of Birth</span><span class="v">12.05.1984</span></div>
+        <div class="sr-info-item"><span class="k">Height / Weight</span><span class="v">182 cm / 84 kg</span></div>
+        <div class="sr-info-item"><span class="k">English Level</span><span class="v">Fluent (STCW III/4)</span></div>
+        <div class="sr-info-item"><span class="k">Available From</span><span class="v ph">[DD.MM.YYYY]</span></div>
+        <div class="sr-info-item"><span class="k">Phone</span><span class="v">+385 90 000 0000</span></div>
+        <div class="sr-info-item"><span class="k">Email</span><span class="v">sample@example.com</span></div>
+        <div class="sr-info-item"><span class="k">City / Country</span><span class="v">Split, Croatia</span></div>
+        <div class="sr-info-item"><span class="k">Total Sea Service</span><span class="v">18 yrs 3 mo</span></div>
+      </div>
+    </section>
+
+    <!-- КОМПОНЕНТ 4: SEA SERVICE TABLE -->
+    <section class="sr-section">
+      <h2 class="sr-section-title">Sea Service Experience</h2>
+      <div class="sr-section-sub"></div>
+      <table class="sr-table">
+        <thead>
+          <tr><th>Vessel Name / Type</th><th>Rank</th><th>Period</th><th>Duration</th><th>Duties / Remarks</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="vessel-name">MV Sample Aurora</span><br><span class="vessel-type">Container Vessel, 8 500 TEU</span></td>
+            <td class="rank-cell">Chief Engineer</td>
+            <td>03.2021 – present</td><td>4 yrs 7 mo</td>
+            <td>Planned and supervised maintenance of MAN B&amp;W main engine; managed engine crew of 8.</td>
+          </tr>
+          <tr>
+            <td><span class="vessel-name">MT Example Voyager</span><br><span class="vessel-type">Product Tanker, 48 000 DWT</span></td>
+            <td class="rank-cell">Second Engineer</td>
+            <td>06.2017 – 02.2021</td><td>3 yrs 9 mo</td>
+            <td>Overhauled auxiliary engines; PMS compliance; bunkering operations.</td>
+          </tr>
+          <tr>
+            <td><span class="vessel-name ph">[Vessel Name]</span><br><span class="vessel-type ph">[Vessel Type]</span></td>
+            <td class="rank-cell ph">[Rank]</td>
+            <td class="ph">[Period]</td><td class="ph">[Duration]</td>
+            <td class="ph">[Duties / Remarks]</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- КОМПОНЕНТ 5: CERTIFICATES LIST -->
+    <section class="sr-section">
+      <h2 class="sr-section-title">Certificates</h2>
+      <div class="sr-section-sub"></div>
+      <div class="sr-certs">
+        <div class="sr-cert"><span class="cname">STCW II/2 — Chief Engineer CoC</span><span class="cvalid">Valid until <b>09.2027</b></span></div>
+        <div class="sr-cert"><span class="cname">Advanced Fire Fighting</span><span class="cvalid">Valid until <b>04.2026</b></span></div>
+        <div class="sr-cert"><span class="cname">Medical Fitness Certificate</span><span class="cvalid">Valid until <span class="ph">[DD.MM.YYYY]</span></span></div>
+        <div class="sr-cert"><span class="cname">GMDSS Radio Operator</span><span class="cvalid">Valid until <b>11.2028</b></span></div>
+      </div>
+    </section>
+
+    <!-- КОМПОНЕНТ 6: FOOTER (золотая hairline-линия + текст; канат убран, этап F) -->
+    <footer class="sr-footer">
+      <div class="sr-footer-rule" role="presentation"></div>
+      <p class="sr-footer-text">References and original documents available upon request.</p>
+    </footer>
+  </div>
+
+</div>
+
+<script>
+  // Переключение палитр: меняем data-theme на <html>
+  const btns = document.querySelectorAll('.toolbar button');
+  btns.forEach(b => b.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.p);
+    btns.forEach(x => x.classList.toggle('active', x === b));
+  }));
+</script>
+</body>
+</html>

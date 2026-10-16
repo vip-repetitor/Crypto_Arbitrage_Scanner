@@ -1,0 +1,191 @@
+{
+  "$schema_note": "Design tokens для Premium Seafarer Resume Builder. Источник истины для premium.css. Три палитры: navy-gold (дефолт), black-champagne, ocean-platinum.",
+  "meta": {
+    "project": "Premium Seafarer Resume Builder",
+    "version": "1.0.0",
+    "date": "2026-10-16",
+    "principles": [
+      "dark noble background + one metallic accent",
+      "generous whitespace (8px modular scale)",
+      "hairline rules instead of heavy borders",
+      "serif display x sans data pairing, offline-safe system stacks",
+      "soft two-level shadows",
+      "one strong visual element per page (one accent element, e.g. photo ring)"
+    ]
+  },
+  "color": {
+    "themes": {
+      "navy-gold": {
+        "label": "Navy Gold — deep sea navy + polished gold",
+        "bg.page": "#EDEFF3",
+        "bg.surface": "#FFFFFF",
+        "bg.cream": "#F5F2E8",
+        "header.bg.from": "#0B1F3A",
+        "header.bg.to": "#14315C",
+        "header.glow": "rgba(201,162,39,0.22)",
+        "accent.metal": "#C9A227",
+        "accent.metal.highlight": "#E3C56A",
+        "accent.metal.shade": "#8A6D1C",
+        "accent.text.onDark": "#E3C56A",
+        "accent.text.onLight": "#A3801A",
+        "text.primary": "#1C2430",
+        "text.secondary": "#6B7686",
+        "text.inverse": "#FFFFFF",
+        "text.placeholder": "#AAB2BF",
+        "border.hairline": "#DFE3EA",
+        "border.table": "#DBE0E8",
+        "table.zebra": "#F7F9FC"
+      },
+      "black-champagne": {
+        "label": "Black Champagne — charcoal black + champagne metal + warm ivory",
+        "bg.page": "#ECEAE4",
+        "bg.surface": "#FFFFFF",
+        "bg.cream": "#F4EFE4",
+        "header.bg.from": "#14110F",
+        "header.bg.to": "#2A241E",
+        "header.glow": "rgba(217,190,140,0.18)",
+        "accent.metal": "#D9BE8C",
+        "accent.metal.highlight": "#EFE0BE",
+        "accent.metal.shade": "#9A7E4E",
+        "accent.text.onDark": "#EFE0BE",
+        "accent.text.onLight": "#8A6E3F",
+        "text.primary": "#221E19",
+        "text.secondary": "#75695A",
+        "text.inverse": "#FAF7F0",
+        "text.placeholder": "#B4AA9A",
+        "border.hairline": "#E4DED2",
+        "border.table": "#DDD6C8",
+        "table.zebra": "#F8F5EE"
+      },
+      "ocean-platinum": {
+        "label": "Ocean Platinum — slate ocean blue-grey + platinum silver + cool mist",
+        "bg.page": "#EBEEF2",
+        "bg.surface": "#FFFFFF",
+        "bg.cream": "#EFF2F5",
+        "header.bg.from": "#1E2B3A",
+        "header.bg.to": "#33485F",
+        "header.glow": "rgba(198,203,212,0.20)",
+        "accent.metal": "#C6CBD4",
+        "accent.metal.highlight": "#EDF0F4",
+        "accent.metal.shade": "#7E8794",
+        "accent.text.onDark": "#EDF0F4",
+        "accent.text.onLight": "#5C6672",
+        "text.primary": "#212A35",
+        "text.secondary": "#69747F",
+        "text.inverse": "#FFFFFF",
+        "text.placeholder": "#A9B2BC",
+        "border.hairline": "#DEE3E9",
+        "border.table": "#D5DBE2",
+        "table.zebra": "#F5F7FA"
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "display": "Georgia, 'Times New Roman', 'PT Serif', serif",
+      "body": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "note": "Системные стеки: полная offline-работа, без Google Fonts; при печати не деградируют."
+    },
+    "scale": {
+      "name": {
+        "size": "34px",
+        "weight": 600,
+        "letterSpacing": "1px",
+        "family": "display"
+      },
+      "rank": {
+        "size": "16px",
+        "weight": 500,
+        "letterSpacing": "3px",
+        "transform": "uppercase",
+        "family": "body"
+      },
+      "sectionTitle": {
+        "size": "18px",
+        "weight": 600,
+        "letterSpacing": "2.5px",
+        "transform": "uppercase",
+        "family": "display"
+      },
+      "body": {
+        "size": "14.5px",
+        "lineHeight": 1.75,
+        "family": "body"
+      },
+      "tableCell": {
+        "size": "13px",
+        "lineHeight": 1.5,
+        "family": "body"
+      },
+      "pill": {
+        "size": "12.5px",
+        "family": "body"
+      },
+      "metaLabel": {
+        "size": "11.5px",
+        "letterSpacing": "0.4px",
+        "transform": "uppercase",
+        "family": "body"
+      },
+      "footerText": {
+        "size": "13.5px",
+        "letterSpacing": "1.5px",
+        "family": "display"
+      }
+    }
+  },
+  "spacing": {
+    "unit": "8px",
+    "scalePx": [
+      8,
+      16,
+      24,
+      32,
+      40,
+      48
+    ],
+    "pagePaddingX": "48px",
+    "sectionGapY": "30px",
+    "cellPadding": "10px 12px",
+    "printScale": "x0.7 (34/22px paddings)"
+  },
+  "radius": {
+    "pill": "999px",
+    "card": "14px",
+    "page": "6px",
+    "photo": "50%",
+    "certCard": "8px"
+  },
+  "shadow": {
+    "ambient": "0 10px 30px rgba(11,31,58,0.12)",
+    "elevated": "0 18px 50px rgba(11,31,58,0.18)",
+    "photoRing": "0 10px 26px rgba(0,0,0,0.35)",
+    "print": "none"
+  },
+  "gradients": {
+    "headerBg": "linear-gradient(135deg, var(--t-header-from) 0%, var(--t-header-to) 55%, var(--t-header-from) 100%)",
+    "headerGlow": "radial-gradient(1200px 400px at 85% -40%, var(--t-header-glow), transparent 60%)",
+    "goldHairline": "linear-gradient(90deg, transparent, var(--t-accent) 15%, var(--t-accent-hl) 50%, var(--t-accent) 85%, transparent)",
+    "metalRing": "linear-gradient(135deg, var(--t-accent-hl), var(--t-accent) 45%, var(--t-accent-shade) 75%, var(--t-accent-hl))"
+  },
+  "components": {
+    "resumeHeader": "flex row: photo in polished-metal gradient ring (150px circle) + name/rank/pills; dark gradient bg with radial glow; 3px gold hairline below",
+    "sectionTitle": "display UPPERCASE 18px tracking 2.5px + 56x2px accent underline bar",
+    "personalInfoGrid": "auto-fit grid minmax(220px,1fr); rows key->value with dotted bottom leader; labels uppercase muted 11.5px; values semibold right-aligned",
+    "seaServiceTable": "full width, 1px border, thead dark theme-gradient white text uppercase 11.5px tracking 1px, zebra even rows, vessel name bold primary, type muted 12px, rank accent-on-light",
+    "certificatesList": "2-col grid cards, left 3px accent stripe, radius 8px, cream bg, name bold + 'Valid until' right in accent",
+    "footerHairline": "thin gold hairline (2px fading gradient rule) + centered serif footer text; steel-rope ornament removed by owner decision (stage F)"
+  },
+  "print": {
+    "rules": [
+      "box-shadow: none on page",
+      "max-width: 100%",
+      "reduce paddings ~30%",
+      "-webkit-print-color-adjust: exact; print-color-adjust: exact (сохранить тёмную шапку и hairline-акценты)"
+    ]
+  },
+  "accessibility": {
+    "contrastNotes": "accent-on-light (#A3801A на белом ≈ 4.6:1) используется вместо #C9A227 для текста на светлом; капса и трекинг только в заголовках; placeholder курсивом + серым различим.",
+    "noAcidColors": "Никаких HSL-насыщенных > 85% цветов; все акценты — металлические приглушённые."
+  }
+}
