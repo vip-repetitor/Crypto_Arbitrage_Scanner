@@ -48,7 +48,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 (имя метода задано stdlib)
         url = urlparse(self.path)
-        if url.path == "/api/config":
+        # Корневой маршрут: короткая справка — что это за сервер и куда ходить.
+        # Без него браузер на http://localhost:8000/ показывал JSON-ошибку 404,
+        # что выглядело как «сервер сломан», хотя API работал исправно.
+        if url.path in ("/", "/index.html", "/health"):
+            self._json(200, {
+                "service": "BONDINVEST payout model API",
+                "status": "ok" if url.path != "/" else "alive",
+                "routes": [
+                    "GET /api/config — текущие веса модели (config.yaml)",
+                    "GET /api/index?loyalty=12&volume=1500&activity=4&deposit=1000 — расчёт индекса участия",
+                    "POST /api/reload — перечитать config.yaml без рестарта",
+                    "GET /health — проверка живости",
+                ],
+                "ui": "фронтенд приложения доступен отдельно: http://localhost:5173/",
+            })
+        elif url.path == "/api/config":
             # Отдаём сериализованные веса — фронт может строить UI из них.
             self._json(200, {"goals": [
                 {"id": g.id, "title": g.title, "icon": g.icon, "unit": g.unit,

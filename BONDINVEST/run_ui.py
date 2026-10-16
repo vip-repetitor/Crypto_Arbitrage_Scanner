@@ -45,14 +45,32 @@ def die(msg: str) -> None:
     sys.exit(1)
 
 
+def resolve_npm() -> str:
+    """
+    Возвращает путь к npm, совместимый с запуском на Windows.
+
+    Логика: npm под Windows — это пакетный менеджер, распространяемый вместе
+    с Node.js. На этой платформе сам исполняемый файл называется `npm.cmd`,
+    а не `npm`. Поэтому сначала проверяем наличие `npm` через shutil.which,
+    затем явно пробуем `npm.cmd` (для Windows), чтобы subprocess мог найти
+    корректную команду без ошибки FileNotFoundError [WinError 2].
+    """
+    # Стандартное имя работает на Linux/macOS и часто находится в PATH даже на Windows.
+    if shutil.which("npm") is not None:
+        return "npm"
+    # Для Windows добавляем явный вариант .cmd, который реально запускает Node.
+    if os.name == "nt" and shutil.which("npm.cmd") is not None:
+        return "npm.cmd"
+    die("npm не найден в PATH. Установите Node.js 18+ (https://nodejs.org).")
+
+
 def check_node() -> None:
-    """Убеждаемся, что Node.js и npm доступны в PATH."""
-    for tool in ("node", "npm"):
-        if shutil.which(tool) is None:
-            die(f"{tool} не найден в PATH. Установите Node.js 18+ (https://nodejs.org).")
+    """Убеждаемся, что Node.js доступен в PATH (npm проверим отдельно)."""
+    if shutil.which("node") is None:
+        die("node не найден в PATH. Установите Node.js 18+ (https://nodejs.org).")
 
 
-def ensure_dependencies() -> None:
+def ensure_dependencies(npm_cmd: str) -> None:
     """
     Установка npm-зависимостей при необходимости.
 
@@ -65,8 +83,8 @@ def ensure_dependencies() -> None:
     if not need_install and os.path.isfile(lock):
         need_install = os.path.getmtime(lock) > os.path.getmtime(modules)
     if need_install:
-        print("[BONDINVEST] Устанавливаю npm-зависимости (npm install)…")
-        subprocess.run(["npm", "install"], cwd=APP_DIR, check=True)
+        print(f"[BONDINVEST] Устанавливаю npm-зависимости ({npm_cmd} install)…")
+        subprocess.run([npm_cmd, "install"], cwd=APP_DIR, check=True)
     else:
         print("[BONDINVEST] Зависимости уже установлены — пропускаю npm install.")
 
@@ -111,13 +129,19 @@ def start_model_api() -> subprocess.Popen | None:
     )
 
 
-def start_vite_devserver(port: int) -> subprocess.Popen:
+def start_vite_devserver(port: int, npm_cmd: str) -> subprocess.Popen:
     """
     Запуск dev-сервера Vite через `npm run dev`.
     --strictPort гарантирует, что сервер НЕ уедет на другой порт молча:
     лучше упасть с понятной ошибкой, чем открыть не тот URL.
+
+    ВАЖНО про Windows: аргументы вида `--port 3000` нужно передавать npm
+    ЧЕРЕЗ разделитель `--`, иначе сам npm перехватит их как собственные опции
+    и не отдаст скрипту — тогда Vite запустится на дефолтном порту. Поэтому
+    команда собирается списком (без shell=True): список элементов передаётся
+    процессу дословно, спецсимволы PowerShell/cmd не участвуют в разборе.
     """
-    cmd = ["npm", "run", "dev", "--", "--port", str(port), "--strictPort"]
+    cmd = [npm_cmd, "run", "dev", "--", "--port", str(port), "--strictPort"]
     print(f"[BONDINVEST] Старт Vite: {' '.join(cmd)} (cwd={APP_DIR})")
     return subprocess.Popen(cmd, cwd=APP_DIR)
 
@@ -139,10 +163,11 @@ def main() -> None:
         die(f"Папка приложения не найдена: {APP_DIR}")
 
     check_node()
-    ensure_dependencies()
+    npm_cmd = resolve_npm()
+    ensure_dependencies(npm_cmd)
 
     model_proc = start_model_api() if args.with_model else None
-    vite_proc = start_vite_devserver(args.port)
+    vite_proc = start_vite_devserver(args.port, npm_cmd)
 
     url = f"http://localhost:{args.port}"
     # Ждём поднятия сервера в отдельном потоке, чтобы vite-логи печатались сразу.
