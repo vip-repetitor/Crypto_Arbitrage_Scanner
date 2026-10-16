@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Premium Seafarer Resume Builder</title>
+  <!-- Конструктор работает полностью локально: без CDN, без сервера, без отправки данных. -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <h1>⚓ Premium <span class="accent">Seafarer</span> Resume Builder</h1>
+    <span class="tagline">Local-only · No registration · Live preview · Export: standalone HTML</span>
+  </header>
+  <div class="gold-rule"></div>
+
+  <main class="layout">
+
+    <!-- ================= ФОРМА ================= -->
+    <section class="panel" aria-label="Resume data form">
+      <div class="form-scroll">
+        <form id="resume-form" autocomplete="off" onsubmit="return false;">
+
+          <!-- 1. Personal / Header -->
+          <fieldset class="block">
+            <legend>Personal / Header</legend>
+            <div class="grid-2">
+              <div class="field span-2">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" data-key="header.fullName" placeholder="e.g. John A. Sample" />
+              </div>
+              <div class="field">
+                <label for="rank">Rank / Position</label>
+                <input type="text" id="rank" data-key="header.rank" placeholder="e.g. Second Engineer" />
+              </div>
+              <div class="field">
+                <label for="age">Age</label>
+                <input type="text" id="age" data-key="header.age" placeholder="e.g. 34" />
+              </div>
+              <div class="field">
+                <label for="nationality">Nationality</label>
+                <input type="text" id="nationality" data-key="header.nationality" placeholder="e.g. Filipino" />
+              </div>
+              <div class="field">
+                <label for="passport">Passport Number</label>
+                <input type="text" id="passport" data-key="header.passport" placeholder="e.g. P1234567X (sample)" />
+              </div>
+              <div class="field">
+                <label for="seamanBook">Seaman Book Number</label>
+                <input type="text" id="seamanBook" data-key="header.seamanBook" placeholder="e.g. SB-000123 (sample)" />
+              </div>
+              <div class="field">
+                <label>Photo (JPG/PNG)</label>
+                <div class="photo-row">
+                  <img id="photoThumb" class="photo-thumb" alt="photo preview" src="" hidden />
+                  <div id="photoThumbEmpty" class="photo-thumb empty">No&nbsp;photo</div>
+                  <span class="file-btn">
+                    <span class="btn btn-ghost btn-sm">Choose photo…</span>
+                    <input type="file" id="photoInput" accept="image/*" />
+                  </span>
+                  <button type="button" class="btn btn-ghost btn-sm" id="photoRemoveBtn" hidden>Remove</button>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- 2. Personal Information -->
+          <fieldset class="block">
+            <legend>Personal Information</legend>
+            <div class="grid-2">
+              <div class="field"><label for="dob">Date of Birth</label>
+                <input type="text" id="dob" data-key="personal.dob" placeholder="DD.MM.YYYY" /></div>
+              <div class="field"><label for="heightWeight">Height / Weight</label>
+                <input type="text" id="heightWeight" data-key="personal.heightWeight" placeholder="e.g. 175 cm / 72 kg" /></div>
+              <div class="field"><label for="englishLevel">English Level</label>
+                <select id="englishLevel" data-key="personal.englishLevel">
+                  <option value="">— select —</option>
+                  <option>Basic</option>
+                  <option>Pre-Intermediate</option>
+                  <option>Intermediate</option>
+                  <option>Upper-Intermediate</option>
+                  <option>Advanced</option>
+                  <option>Proficient / Native</option>
+                </select></div>
+              <div class="field"><label for="availableFrom">Available From</label>
+                <input type="text" id="availableFrom" data-key="personal.availableFrom" placeholder="DD.MM.YYYY" /></div>
+              <div class="field"><label for="phone">Phone</label>
+                <input type="tel" id="phone" data-key="personal.phone" placeholder="+000 000 000 000 (sample)" /></div>
+              <div class="field"><label for="email">Email</label>
+                <input type="email" id="email" data-key="personal.email" placeholder="name@example.com (sample)" /></div>
+              <div class="field"><label for="cityCountry">City / Country</label>
+                <input type="text" id="cityCountry" data-key="personal.cityCountry" placeholder="e.g. Manila, Philippines" /></div>
+              <div class="field"><label for="totalSeaService">Total Sea Service</label>
+                <input type="text" id="totalSeaService" data-key="personal.totalSeaService" placeholder="e.g. 10 years 4 months" /></div>
+            </div>
+          </fieldset>
+
+          <!-- 3. About Me -->
+          <fieldset class="block">
+            <legend>About Me</legend>
+            <div class="field">
+              <label for="aboutMe">About Me (will appear in the resume as-is)</label>
+              <textarea id="aboutMe" data-key="aboutMe" placeholder="Experienced marine officer with a strong safety record… (English text recommended)"></textarea>
+            </div>
+          </fieldset>
+
+          <!-- 4. Sea Service Experience -->
+          <fieldset class="block">
+            <legend>Sea Service Experience</legend>
+            <div id="vesselsList"><!-- карточки судов рендерит app.js --></div>
+            <button type="button" class="btn btn-outline-gold btn-sm" id="addVesselBtn">+ Add vessel</button>
+          </fieldset>
+
+          <!-- 5. Certificates -->
+          <fieldset class="block">
+            <legend>Certificates</legend>
+            <div id="certsList"><!-- карточки сертификатов рендерит app.js --></div>
+            <button type="button" class="btn btn-outline-gold btn-sm" id="addCertBtn">+ Add certificate</button>
+          </fieldset>
+
+          <!-- 6. Footer -->
+          <fieldset class="block">
+            <legend>Footer</legend>
+            <div class="field">
+              <label for="footerText">Footer text</label>
+              <input type="text" id="footerText" data-key="footerText"
+                     placeholder="References and original documents available upon request." />
+            </div>
+          </fieldset>
+
+        </form>
+
+        <!-- Панель инструментов -->
+        <div class="toolbar">
+          <button type="button" class="btn btn-navy btn-sm" id="sampleBtn">Load sample data</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="clearBtn">Clear all data</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="exportJsonBtn">Export JSON</button>
+          <span class="file-btn">
+            <span class="btn btn-ghost btn-sm">Import JSON</span>
+            <input type="file" id="importJsonInput" accept=".json,application/json" />
+          </span>
+          <span class="spacer"></span>
+          <button type="button" class="btn btn-gold" id="downloadHtmlBtn">⬇ Download resume HTML</button>
+        </div>
+        <div class="status-line" id="statusLine">Ready.</div>
+      </div>
+    </section>
+
+    <!-- ================= LIVE PREVIEW ================= -->
+    <aside class="panel preview-panel" aria-label="Live resume preview">
+      <div class="preview-bar">
+        <span class="title">Live Preview — English resume (HTML only)</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="printPreviewBtn" title="Open preview print dialog (browser Save as PDF is user's own choice)">Print preview</button>
+      </div>
+      <div class="preview-frame-wrap">
+        <iframe id="preview" title="Resume live preview" sandbox="allow-same-origin"></iframe>
+      </div>
+    </aside>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
