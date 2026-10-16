@@ -214,6 +214,7 @@ function progressMarkup() {
       <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Resume completion progress">
         <div class="progress-fill" id="progressFill"></div>
       </div>
+      <div class="progress-status"><span id="undoSlot"></span></div>
     </div>`;
 }
 
@@ -266,6 +267,23 @@ function updateProgress() {
     ? "Resume complete — ready to download ✓"
     : "Completion: " + p.pct + "% (" + p.filled + " of " + p.total + " fields filled)";
   label.className = "progress-label" + (p.pct >= 100 ? " done" : p.pct >= 60 ? " mid" : "");
+}
+
+/* ---------- Кнопка Undo внутри прогресс-панели (этап UX-P) ----------
+   Статус-текст и Undo живут в одном слоте .progress-status, чтобы layout
+   не прыгал: панель занимает фиксированную ширину в статус-строке. */
+function renderUndoButton() {
+  const slot = document.getElementById("undoSlot");
+  if (!slot) return;
+  slot.innerHTML = ""; // служебная разметка без пользовательских данных
+  if (!undoState) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "undo-btn";
+  btn.textContent = "Undo";
+  btn.title = "Restore the removed entry";
+  btn.addEventListener("click", undoRemove);
+  slot.appendChild(btn);
 }
 
 /* ---------- Рендер карточек судов (Шаг 4) ---------- */
@@ -328,7 +346,7 @@ function renderVessels() {
       inp.type = "text";
       inp.placeholder = ph;
       inp.value = v[key] || "";
-      inp.addEventListener("input", () => { v[key] = inp.value; scheduleUpdate(); });
+      inp.addEventListener("input", () => { v[key] = inp.value; scheduleUpdate(); updateProgress(); }); // прогресс пересчитываем сразу (этап UX-P)
       f.append(lab, inp);
       grid.appendChild(f);
     });
@@ -400,7 +418,7 @@ function renderCerts() {
       inp.type = "text";
       inp.placeholder = ph;
       inp.value = c[key] || "";
-      inp.addEventListener("input", () => { c[key] = inp.value; scheduleUpdate(); });
+      inp.addEventListener("input", () => { c[key] = inp.value; scheduleUpdate(); updateProgress(); }); // прогресс сразу (UX-P)
       f.append(lab, inp);
       grid.appendChild(f);
     });
@@ -434,25 +452,21 @@ function removeItem(listKey, index) {
   update();
   saveToStorage();
   undoState = { listKey, index, item };
-  undoState.timer = setTimeout(() => { undoState = null; setStatus("Ready.", ""); }, UNDO_TTL_MS);
+  undoState.timer = setTimeout(() => { undoState = null; setStatus("Ready.", ""); renderUndoButton(); }, UNDO_TTL_MS);
   setStatus(`Entry removed.`, "ok");
-  // Кнопка Undo добавляется внутрь .status-text, чтобы не перекрывать прогресс-бар (этап UX-P)
-  const textNode = document.querySelector("#statusLine .status-text");
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "undo-btn";
-  btn.textContent = "Undo";
-  btn.addEventListener("click", () => {
-    if (!undoState) return;
-    const { listKey: k, index: i2, item: it } = undoState;
-    clearUndo();
-    data[k].splice(Math.min(i2, data[k].length), 0, it);
-    rerenderLists();
-    update();
-    saveToStorage();
-    setStatus("Removal undone.", "ok");
-  });
-  if (textNode) { textNode.appendChild(document.createTextNode(" ")); textNode.appendChild(btn); }
+  renderUndoButton(); // кнопка Undo — в слоте внутри прогресс-панели (этап UX-P)
+}
+
+function undoRemove() {
+  if (!undoState) return;
+  const { listKey: k, index: i2, item: it } = undoState;
+  clearUndo();
+  data[k].splice(Math.min(i2, data[k].length), 0, it);
+  rerenderLists();
+  update();
+  saveToStorage();
+  setStatus("Removal undone.", "ok");
+  renderUndoButton();
 }
 
 /* Дублирование записи: быстрый ввод однотипных контрактов/ротаций */
