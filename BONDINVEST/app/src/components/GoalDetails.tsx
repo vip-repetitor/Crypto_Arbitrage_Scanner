@@ -13,7 +13,7 @@ import { Link, useParams } from 'react-router-dom';
 import type { Goal, ProgressBarColor } from '../types';
 import { INDEX_TO_RUB } from '../types';
 import { useGoal } from '../hooks/useGoals';
-import { achievedThreshold, nextThreshold, remainingToTarget } from '../utils/calculations';
+import { achievedThreshold, nextThreshold, remainingToTarget, forecastWeeks, forecastDate } from '../utils/calculations';
 import { formatRub, formatWithUnit } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
 
@@ -198,6 +198,25 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
           <p className="mt-1 text-base text-muted">
             Осталось: {formatWithUnit(remainingToTarget({ current: data.current, target: next.value }), data.unit)}
           </p>
+
+          {/* UX-фича «прогноз» на деталях цели: дата закрытия следующего порога
+              при сохранении исторического темпа. forecastWeeks возвращает null,
+              если темп неизвестен (ratePerWeek отсутствует) — блок скрывается. */}
+          {(() => {
+            const weeks = forecastWeeks(
+              remainingToTarget({ current: data.current, target: next.value }),
+              data.ratePerWeek ?? 0,
+            );
+            if (weeks === null) return null;
+            const date = forecastDate(weeks);
+            return (
+              <p className="mt-2 text-sm font-medium text-brand tabular-nums" role="note">
+                📈 При текущем темпе (~{formatWithUnit(data.ratePerWeek ?? 0, `${data.unit}/нед`)})
+                порог будет закрыт через ~{weeks} {weeks === 1 ? 'неделю' : weeks < 5 ? 'недели' : 'недель'}
+                {date ? `, ориентировочно ${date.toLocaleDateString('ru-RU')}` : ''}
+              </p>
+            );
+          })()}
         </section>
       )}
 
