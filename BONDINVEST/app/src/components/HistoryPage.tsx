@@ -1,3 +1,12 @@
+/**
+ * HistoryPage.tsx — страница «История бонусов» (роут /history).
+ * Функциональность: сводные суммы (всего / за 30 дней), фильтры по типам выплат,
+ * полный список операций и экспорт отфильтрованной выборки в CSV.
+ *
+ * Поток данных: useBonusHistory() (React Query) → локальный useState(filter)
+ * → useMemo-подобная фильтрация на каждом рендере (данные моковые и маленькие,
+ * мемоизация не требуется).
+ */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { TransactionType } from '../types';
@@ -5,6 +14,7 @@ import { useBonusHistory } from '../hooks/useGoals';
 import { formatRub } from '../utils/format';
 import { TransactionRow } from './TransactionRow';
 
+/** Возможные значения фильтра; 'all' показывает всё. */
 type Filter = 'all' | 'loyalty' | 'volume' | 'activity' | 'withdraw';
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
@@ -15,6 +25,13 @@ const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: 'withdraw', label: 'Выводы' },
 ];
 
+/**
+ * Предикат фильтрации одной транзакции.
+ * Логика: у мок-данных нет поля goalId, поэтому принадлежность выплаты цели
+ * определяется по подстроке в label («Лояльность · …»). Это компромисс мока;
+ * с реальным API достаточно сравнивать t.goalId === filter.
+ * 'withdraw' фильтруется строго по типу, а не по тексту.
+ */
 function matchesFilter(type: TransactionType, label: string | undefined, filter: Filter): boolean {
   if (filter === 'all') return true;
   if (filter === 'withdraw') return type === 'withdraw';
@@ -27,7 +44,15 @@ function matchesFilter(type: TransactionType, label: string | undefined, filter:
   );
 }
 
-/** Экспорт истории в CSV */
+/**
+ * Экспорт истории в CSV. Логика по шагам:
+ * 1. Формируем строку заголовка и тела: разделитель «;» — стандарт для русскоязычной
+ *    локали Excel; точка в сумме заменяется на запятую (decimal separator ru-RU);
+ * 2. Внутри label экранируем «;» запятой, чтобы не ломать колонки;
+ * 3. BOM (\uFEFF) в начале файла — иначе Excel прочитает UTF-8 кириллицу как кракозябры;
+ * 4. Blob → временный object-URL → кликаем невидимой <a download> → отзываем URL,
+ *    освобождая память браузера.
+ */
 export function exportCsv(rows: Array<{ date: string; label: string; amount: number }>): void {
   const header = 'Дата;Описание;Сумма\n';
   const body = rows
@@ -46,6 +71,7 @@ export function exportCsv(rows: Array<{ date: string; label: string; amount: num
 export function HistoryPage() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useBonusHistory();
+  // Состояние выбранного фильтра живёт здесь: сбросится при размонтировании страницы
   const [filter, setFilter] = useState<Filter>('all');
 
   if (isLoading) {
@@ -59,8 +85,13 @@ export function HistoryPage() {
     return <p className="text-danger">Не удалось загрузить историю.</p>;
   }
 
+  // --- Расчёты сводных карточек и списка ---
+  // Отфильтрованный список зависит от состояния filter — пересобирается на каждый рендер
   const filtered = data.filter((t) => matchesFilter(t.type, t.label, filter));
+  // Сумма всех бонусных начислений (без выводов)
   const totalBonuses = data.filter((t) => t.type === 'bonus').reduce((s, t) => s + t.amount, 0);
+  // Сумма бонусов за последние 30 дней от контрольной даты мока (2025-01-15 → ≥ 2024-12-16).
+  // Дата захардкожена синхронно с relativeDate(): демо стабильно при любом системном времени.
   const last30 = data
     .filter((t) => t.type === 'bonus' && new Date(t.date.replace(' ', 'T')) >= new Date('2024-12-16'))
     .reduce((s, t) => s + t.amount, 0);
@@ -78,6 +109,7 @@ export function HistoryPage() {
 
       <h1 className="text-2xl font-bold text-ink sm:text-3xl">История бонусов</h1>
 
+      {/* Сводка: две крупные цифры — всего и за 30 дней */}
       <section
         aria-label="Суммарные бонусы"
         className="grid grid-cols-1 gap-4 rounded-2xl border border-line bg-white p-6 shadow-card sm:grid-cols-2"
@@ -92,6 +124,7 @@ export function HistoryPage() {
         </div>
       </section>
 
+      {/* Кнопки-фильтры: aria-pressed отмечает активный toggle для скринридера */}
       <section aria-label="Фильтры">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Фильтры</h2>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Фильтр истории">
@@ -113,6 +146,7 @@ export function HistoryPage() {
         </div>
       </section>
 
+      {/* Список выплат в текущей выборке; пустое состояние — текстом, не пустым блоком */}
       <section
         aria-label="Выплаты"
         className="rounded-2xl border border-line bg-white p-5 shadow-card"
@@ -128,6 +162,7 @@ export function HistoryPage() {
         )}
       </section>
 
+      {/* Экспортируется именно filtered — пользователь скачивает то, что видит */}
       <button
         type="button"
         onClick={() =>
@@ -144,6 +179,7 @@ export function HistoryPage() {
         Экспорт в CSV
       </button>
 
+      {/* Демонстрационный переход между маршрутами (в реальном продукте ссылки были бы на цели выплат) */}
       <p className="text-center text-sm text-muted">
         Демонстрация навигации:{' '}
         <button

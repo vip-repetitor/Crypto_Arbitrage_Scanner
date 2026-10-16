@@ -1,3 +1,14 @@
+/**
+ * GoalDetails.tsx — страница деталей цели (роут /goal/:id).
+ * Пять секций из ТЗ: «Ваш прогресс», «Условия» (пороги), «Ваш бонус»,
+ * «Как достичь» (шаги) и «Следующий уровень».
+ *
+ * Логика получения данных: цель ищется через useGoal(id) из кэша ['goals'].
+ * Проп goal позволяет передать данные напрямую (используется в юнит-тестах
+ * без роутера и React Query).
+ * Порядок раннего возврата: loading → error → not found → контент;
+ * после загрузки данных рендер синхронный, все вычисления — чистые функции.
+ */
 import { Link, useParams } from 'react-router-dom';
 import type { Goal, ProgressBarColor } from '../types';
 import { INDEX_TO_RUB } from '../types';
@@ -6,6 +17,7 @@ import { achievedThreshold, nextThreshold, remainingToTarget } from '../utils/ca
 import { formatRub, formatWithUnit } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
 
+/** Те же закреплённые цвета баров, что на дашборде (макет требует консистентности). */
 const GOAL_COLORS: Record<string, ProgressBarColor> = {
   loyalty: 'gold',
   volume: 'success',
@@ -19,6 +31,7 @@ interface GoalDetailsProps {
 
 /** GoalDetails — страница деталей цели (/goal/:id) */
 export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
+  // id берётся либо из пропа (тесты), либо из URL-параметра маршрута
   const params = useParams<{ id: string }>();
   const { goal: routedGoal, isLoading, error } = useGoal(goalProp?.id ?? params.id);
   const data = goalProp ?? routedGoal;
@@ -34,6 +47,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
     return <p className="text-danger">Не удалось загрузить цель.</p>;
   }
   if (!data) {
+    // 404-состояние: несуществующий id в адресной строке — ссылка назад, чтобы не тупик
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-10 text-center">
         <p className="text-lg text-muted">Цель не найдена.</p>
@@ -43,18 +57,23 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
       </div>
     );
   }
-  
 
+  // --- Вычисления для всех секций страницы ---
   const color = GOAL_COLORS[data.id] ?? 'brand';
+  // Достигнутый уровень: последний порог <= current (даёт текущий бонус)
   const currentLevel = achievedThreshold(data.thresholds, data.current);
+  // Ближайший недостиженный порог или null (все закрыты)
   const next = nextThreshold(data.thresholds, data.current);
+  // Для бара целим следующий порог, а не финальный target — «до ближайшей награды»
   const remaining = next ? Math.max(0, next.value - data.current) : 0;
+  // Ожидаемая выплата в ₽/год: достигнутый бонус × курс (округление до 0.1)
   const expectedRub = currentLevel
     ? Math.round(currentLevel.bonus * INDEX_TO_RUB * 10) / 10
     : 0;
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+      {/* Хлебные крошки: landmark nav по стандарту доступности */}
       <nav aria-label="Хлебные крошки">
         <Link
           to="/"
@@ -71,6 +90,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
         <h1 className="text-2xl font-bold text-ink sm:text-3xl">{data.title.toUpperCase()}</h1>
       </header>
 
+      {/* Секция 1 «Ваш прогресс»: крупный bar до следующего порога + остаток/подсказка */}
       <section
         aria-label="Ваш прогресс"
         className="rounded-2xl border border-line bg-white p-6 shadow-card"
@@ -89,12 +109,15 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
           ariaLabel={`Прогресс цели ${data.title}`}
         />
         <p className="mt-3 text-base text-muted">
+          {/* Пока есть следующий порог — показываем остаток до разблокировки;
+              иначе — общий hint цели ("Бонус активен!") */}
           {remaining > 0
             ? `Осталось: ${formatWithUnit(remaining, data.unit)} до разблокировки`
             : data.hint}
         </p>
       </section>
 
+      {/* Секция 2 «Условия»: полный список порогов с отметками ✓ достигнуто / ожидается */}
       <section
         aria-label="Условия"
         className="rounded-2xl border border-line bg-white p-6 shadow-card"
@@ -118,6 +141,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
         </ul>
       </section>
 
+      {/* Секция 3 «Ваш бонус»: dl-список «кто/что» — текущий бонус, выплата, прирост дальше */}
       <section
         aria-label="Ваш бонус"
         className="rounded-2xl border border-gold/40 bg-gold-soft p-6 shadow-card"
@@ -134,6 +158,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
             <dt className="text-muted">Ожидаемая выплата:</dt>
             <dd className="font-bold tabular-nums text-gold">~{formatRub(expectedRub)}/год</dd>
           </div>
+          {/* Если есть ещё недостиженные пороги — показываем будущий прирост в ₽ */}
           {next && (
             <div className="flex justify-between gap-3">
               <dt className="text-muted">После {formatWithUnit(next.value, data.unit)}:</dt>
@@ -145,6 +170,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
         </dl>
       </section>
 
+      {/* Секция 4 «Как достичь»: нумерованный список шагов из данных цели */}
       <section
         aria-label="Как достичь цели"
         className="rounded-2xl border border-line bg-white p-6 shadow-card"
@@ -157,6 +183,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
         </ol>
       </section>
 
+      {/* Секция 5 «Следующий уровень»: рендерится только если остались пороги */}
       {next && (
         <section
           aria-label="Следующий уровень"
@@ -174,6 +201,7 @@ export function GoalDetails({ goal: goalProp }: GoalDetailsProps) {
         </section>
       )}
 
+      {/* CTA-кнопка целевого действия (в демо — без обработчика: нет платёжного бэкенда) */}
       <button
         type="button"
         className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-white transition-colors hover:bg-brand-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
