@@ -15,6 +15,7 @@ import type { Goal, ProgressBarColor } from '../types';
 import { goalPercent, shouldPulse } from '../utils/calculations';
 import { formatWithUnit } from '../utils/format';
 import { ProgressBar } from './ProgressBar';
+import { BonusBadge } from './BonusBadge';
 import { cardAppear } from '../hooks/useAnimations';
 
 interface GoalCardProps {
@@ -121,10 +122,12 @@ export function GoalCard({
         ariaLabel={`Прогресс цели ${title}`}
       />
 
-      {/* Бонус к индексу — золотым, tabular-nums для стабильной ширины цифр */}
+      {/* Бонус к индексу — золотым, tabular-nums для стабильной ширины цифр.
+          Размер бейджа BonusBadge выводится из значения бонуса (4.csv):
+          +0.2 → small, +0.3 → medium, +0.5 → large */}
       <div className="mt-3 flex items-center justify-between text-sm">
-        <p className="font-medium text-muted">
-          Бонус: <span className="font-bold tabular-nums text-gold">{bonus}</span> к индексу
+        <p className="flex items-center gap-2 font-medium text-muted">
+          Бонус: <BonusBadge bonus={bonus} /> к индексу
         </p>
       </div>
       {/* Подсказка: «Осталось X» / «До следующего уровня» / «Бонус активен!» */}
