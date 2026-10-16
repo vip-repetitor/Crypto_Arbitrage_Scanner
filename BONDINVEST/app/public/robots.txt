@@ -1,9 +1,5 @@
 User-agent: *
-Allow: /
 Disallow: /goal/
 Disallow: /history
-
-# Лидерборд — публичная витрина (в sitemap.xml): индексируется, т.к. данные
-# детерминированной выборки и не содержат персональных данных пользователей.
 
 Sitemap: https://bondinvest.ru/sitemap.xml
