@@ -32,11 +32,11 @@
 | 11 | Swiss / International Typographic Style (Мюллер-Брокманн) | VERIFIED (offline) | Модульная сетка, базовая линия 8px, выравнивание, минимум декора | отступы кратны 8, hairlines |
 | 12 | Editorial-вёрстка мужских глянцев (GQ/Esquire, общий стиль) | UNVERIFIED | Крупное serif-имя, контраст кеглей, узкий трекинг капса | `.sr-name` 34px serif |
 | 13 | Люкс-е-коммерция (Hermès/Cartier digital, общий стиль) | UNVERIFIED | Один металлический акцент на глубоком тёмном фоне, тонкие золотые линии | градиент gold-hairline |
-| 14 | Rolls-Royce Motors Website (тёмный люкс-авто) | UNVERIFIED | Radial-подсветка сверху («прожектор»), конические металлические градиенты | radial-gradient в шапке, conic-кольцо фото |
+| 14 | Rolls-Royce Motors Website (тёмный люкс-авто) | UNVERIFIED | Radial-подсветка сверху («прожектор»), полированные металлические поверхности | radial-gradient в шапке, градиентное кольцо фото |
 | 15 | Financial Times / Bloomberg terminal (финансовая эстетика) | UNVERIFIED | Cream-paper фон #F5F2E8 + dark ink + приглушённые акценты | `--cream`, print-режим |
 | 16 | Notion / Linear (SaaS-минимализм) | UNVERIFIED | Мягкие тени двух уровней (ambient + key), radius 12–16 | `--shadow`, `--radius` |
 | 17 | Apple HIG — материалы и глубина | UNVERIFIED | Слои, полупрозрачность поверх тёмного фона (`rgba(255,255,255,.06)`) | pill на прозрачном фоне |
-| 18 | Marine engineering / yacht brochure (судостроительные буклеты) | UNVERIFIED | Морская семантика: стальной канат, такелаж, deep navy | `.sr-rope` (repeating-linear-gradient) |
+| 18 | Marine engineering / yacht brochure (судостроительные буклеты) | UNVERIFIED | Морская семантика: такелаж, deep navy; паттерн «стальной канат» извлечён, но **не используется** (решение владельца, этап F) | `.sr-footer-rule` (золотая hairline) |
 | 19 | Merchant Navy / STCW certificate layout | UNVERIFIED | Таблицы сертификатов «name — valid until», grid в 2 колонки | `.sr-certs` |
 | 20 | Print-ready A4 resume CSS (browser print behaviour) | VERIFIED (offline) | `@media print`: убрать тени, растянуть на страницу, `print-color-adjust: exact` | блок печати в premium.css |
 
@@ -66,13 +66,13 @@
 ### Тени и градиенты
 - Двухуровневая тень карточки: ambient `0 10–18px 30–50px rgba(navy,.12–.18)`.
 - Шапка: linear 135° navy + radial «прожектор» золотого свечения в углу.
-- Кольцо фото: conic-gradient золота (эффект полированного металла).
+- Кольцо фото: linear-градиент золота (эффект полированного металла; conic заменён ради совместимости со старыми браузерами).
 
 ### Компоненты
 - Pill-метаданные: border 1px rgba(gold,.55), фон rgba(white,.06), radius 999px.
 - Таблица: тёмный thead (navy→navy2), zebra even `#f7f9fc`, td padding 10×12, vessel name bold navy, type muted, rank gold-dark.
 - Сертификаты: grid 2 колонки, карточки с левой gold-полосой, «Valid until» справа.
-- Футер: steel rope — repeating-linear-gradient 115° со светлотными полосами + inset-блики + end-cap'ы-«скобы»; текст footer serif, letter-spacing 1.5px.
+- Футер: тонкая золотая hairline-линия + centered serif текст, letter-spacing 1.5px. (Ранний паттерн «steel rope» удалён по решению владельца — этап F.)
 
 ### Печать
 - `@media print`: shadow off, max-width 100%, уменьшенные паддинги, `-webkit-print-color-adjust: exact`.

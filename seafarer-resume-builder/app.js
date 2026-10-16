@@ -358,7 +358,8 @@ function resumeCss() {
     body{margin:0;background:#EDEFF3;font-family:var(--font-sans);}
     .sr-page{max-width:900px;margin:24px auto;background:#fff;color:var(--ink);border-radius:6px;overflow:hidden;box-shadow:0 18px 50px rgba(11,31,58,.18);}
     .sr-header{background:radial-gradient(1200px 400px at 85% -40%,rgba(201,162,39,.22),transparent 60%),linear-gradient(135deg,#0B1F3A 0%,#14315C 55%,#0B1F3A 100%);color:#fff;padding:44px 48px 38px;display:flex;gap:34px;align-items:center;}
-    .sr-photo-ring{width:150px;height:150px;border-radius:50%;padding:5px;background:conic-gradient(from 210deg,var(--gold),#8a6d1c,var(--gold-soft),var(--gold));box-shadow:0 10px 26px rgba(0,0,0,.35);flex:0 0 auto;}
+    /* Кольцо фото — linear-градиент (conic-gradient убран: не поддерживается старыми Safari/Chrome) */
+    .sr-photo-ring{width:150px;height:150px;border-radius:50%;padding:5px;background:linear-gradient(135deg,var(--gold-soft),var(--gold) 45%,#8a6d1c 75%,var(--gold-soft));box-shadow:0 10px 26px rgba(0,0,0,.35);flex:0 0 auto;}
     .sr-photo-ring img,.sr-photo-placeholder{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--cream);}
     .sr-photo-placeholder{display:flex;align-items:center;justify-content:center;color:#9aa4b2;font-size:12px;letter-spacing:1px;text-transform:uppercase;}
     .sr-id{flex:1;min-width:0;}
@@ -391,10 +392,21 @@ function resumeCss() {
     .sr-cert .cvalid{color:var(--muted);font-size:12px;white-space:nowrap;}
     .sr-cert .cvalid b{color:#a3801a;}
     .sr-footer{margin-top:34px;padding:0 48px 34px;}
-    .sr-rope{height:14px;border-radius:7px;position:relative;background:repeating-linear-gradient(115deg,#6f7681 0 6px,#aab2bd 6px 9px,#8b939f 9px 14px,#d7dbe0 14px 16px);box-shadow:inset 0 3px 5px rgba(255,255,255,.55),inset 0 -4px 6px rgba(0,0,0,.35),0 4px 10px rgba(11,31,58,.18);}
-    .sr-rope::before,.sr-rope::after{content:"";position:absolute;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8ebef,#7d8590 60%,#4a515b);box-shadow:0 2px 5px rgba(0,0,0,.3);}
-    .sr-rope::before{left:-11px;} .sr-rope::after{right:-11px;}
-    .sr-footer-text{text-align:center;margin:16px 0 0;font-family:var(--font-serif);font-size:13.5px;letter-spacing:1.5px;color:var(--muted);}
+    /* Стальной канат убран по решению владельца проекта (этап F): футер = тонкая золотая линия + текст */
+    .sr-footer-rule{height:2px;background:linear-gradient(90deg,transparent,var(--gold) 15%,var(--gold-soft) 50%,var(--gold) 85%,transparent);border:none;border-radius:2px;margin:0 0 16px;}
+    .sr-footer-text{text-align:center;margin:0;font-family:var(--font-serif);font-size:13.5px;letter-spacing:1.5px;color:var(--muted);}
+    /* Адаптив резюме внутри превью и в standalone-файле (этап F) */
+    @media (max-width: 720px){
+      .sr-header{flex-direction:column;align-items:flex-start;gap:20px;padding:28px 20px 24px;}
+      .sr-name{font-size:26px;}
+      .sr-rank{font-size:13px;letter-spacing:2px;margin-bottom:12px;}
+      .sr-photo-ring{width:112px;height:112px;}
+      .sr-section{padding:22px 20px 6px;}
+      .sr-certs,.sr-info-grid{grid-template-columns:minmax(0,1fr);}
+      .sr-table{font-size:12px;}
+      .sr-table thead th,.sr-table tbody td{padding:9px 10px;}
+      .sr-footer{padding:0 20px 22px;}
+    }
     @media print{body{background:#fff;}.sr-page{box-shadow:none;max-width:100%;margin:0;}}
   `;
 }
@@ -502,7 +514,7 @@ function buildResumeHtml(d, forStandalone) {
       </section>
 
       <footer class="sr-footer">
-        <div class="sr-rope" role="presentation" aria-hidden="true"></div>
+        <div class="sr-footer-rule" role="presentation" aria-hidden="true"></div>
         <p class="sr-footer-text">${esc(footerText)}</p>
       </footer>
     </div>`;

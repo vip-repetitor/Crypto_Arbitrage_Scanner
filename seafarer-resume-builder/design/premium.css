@@ -10,7 +10,7 @@
      5. Компонент: personal info grid
      6. Компонент: sea service table
      7. Компонент: certificates list
-     8. Компонент: steel rope footer
+     8. Компонент: footer (hairline + text)
      9. Печать (@media print)
    Все классы .sr-* — самодостаточны, без внешних зависимостей,
    offline-safe системные шрифты. Текст резюме — английский.
@@ -57,9 +57,6 @@
   --t-border-hairline: #DFE3EA;
   --t-border-table: #DBE0E8;
   --t-table-zebra: #F7F9FC;
-  --t-rope-light: #D7DBE0;
-  --t-rope-mid: #8B939F;
-  --t-rope-dark: #4A515B;
 }
 
 /* --- Тема: BLACK CHAMPAGNE --- */
@@ -82,9 +79,6 @@
   --t-border-hairline: #E4DED2;
   --t-border-table: #DDD6C8;
   --t-table-zebra: #F8F5EE;
-  --t-rope-light: #DCD6CB;
-  --t-rope-mid: #948B7C;
-  --t-rope-dark: #544E44;
   --t-shadow-ambient: 0 10px 30px rgba(20, 17, 15, .12);
   --t-shadow-elevated: 0 18px 50px rgba(20, 17, 15, .18);
 }
@@ -109,9 +103,6 @@
   --t-border-hairline: #DEE3E9;
   --t-border-table: #D5DBE2;
   --t-table-zebra: #F5F7FA;
-  --t-rope-light: #E3E7EC;
-  --t-rope-mid: #9AA3AD;
-  --t-rope-dark: #59626C;
   --t-shadow-ambient: 0 10px 30px rgba(30, 43, 58, .12);
   --t-shadow-elevated: 0 18px 50px rgba(30, 43, 58, .18);
 }
@@ -143,12 +134,12 @@
   align-items: center;
 }
 
-.sr-photo-ring {           /* кольцо полированного металла */
+.sr-photo-ring {           /* кольцо полированного металла (linear вместо conic — этап F) */
   width: 150px; height: 150px;
   border-radius: 50%;
   padding: 5px;
-  background: conic-gradient(from 210deg, var(--t-accent), var(--t-accent-shade),
-                             var(--t-accent-hl), var(--t-accent));
+  background: linear-gradient(135deg, var(--t-accent-hl), var(--t-accent) 45%,
+                              var(--t-accent-shade) 75%, var(--t-accent-hl));
   box-shadow: var(--t-shadow-ring);
   flex: 0 0 auto;
 }
@@ -291,38 +282,19 @@ table.sr-table {
 .sr-cert .cvalid b { color: var(--t-accent-on-light); }
 .sr-cert .ph { color: var(--t-text-placeholder); font-style: italic; font-weight: 400; }
 
-/* ---------- 8. Компонент: STEEL ROPE FOOTER ----------
-   Паттерн: витой стальной трос через repeating-linear-gradient +
-   inset-блики (верхний свет / нижняя тень) + металлические end-cap'ы. */
+/* ---------- 8. Компонент: FOOTER (канат убран по решению владельца, этап F) ----------
+   Паттерн: тонкая золотая hairline-линия + centered serif текст. */
 .sr-footer { margin-top: var(--t-space-4); padding: 0 var(--t-space-6) var(--t-space-4); }
-.sr-rope {
-  height: 14px;
-  border-radius: 7px;
-  position: relative;
-  background: repeating-linear-gradient(115deg,
-    var(--t-rope-mid) 0 6px,
-    var(--t-rope-light) 6px 9px,
-    var(--t-rope-mid) 9px 14px,
-    var(--t-rope-light) 14px 16px);
-  box-shadow:
-    inset 0 3px 5px rgba(255, 255, 255, .55),
-    inset 0 -4px 6px rgba(0, 0, 0, .35),
-    0 4px 10px color-mix(in srgb, var(--t-header-from) 18%, transparent);
+.sr-footer-rule {
+  height: 2px;
+  border-radius: 2px;
+  margin: 0 0 var(--t-space-2);
+  background: linear-gradient(90deg, transparent, var(--t-accent) 15%, var(--t-accent-hl) 50%, var(--t-accent) 85%, transparent);
 }
-.sr-rope::before, .sr-rope::after {   /* скобы-наконечники троса */
-  content: "";
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 22px; height: 22px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%,
-              var(--t-rope-light), var(--t-rope-mid) 60%, var(--t-rope-dark));
-  box-shadow: 0 2px 5px rgba(0, 0, 0, .3);
-}
-.sr-rope::before { left: -11px; }
-.sr-rope::after { right: -11px; }
 
 .sr-footer-text {
   text-align: center;
-  margin: var(--t-space-2) 0 0;
+  margin: 0;
   font-family: var(--t-font-display);
   font-size: 13.5px;
   letter-spacing: 1.5px;
@@ -336,8 +308,8 @@ table.sr-table {
   .sr-section { padding: 22px 34px 6px; }
   .sr-header { padding: 30px 34px 26px; }
   .sr-footer { padding: 0 34px 24px; }
-  /* Сохраняем тёмную шапку, металл и канат при печати/Save as PDF */
-  .sr-header, .sr-table thead th, .sr-rope, .sr-cert, .sr-hairline, .sr-section-sub {
+  /* Сохраняем тёмную шапку, металл и hairline-акценты при печати/Save as PDF */
+  .sr-header, .sr-table thead th, .sr-footer-rule, .sr-cert, .sr-hairline, .sr-section-sub {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
