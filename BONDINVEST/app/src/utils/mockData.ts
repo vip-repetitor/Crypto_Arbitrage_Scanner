@@ -1,7 +1,22 @@
+/**
+ * mockData.ts — тестовые данные, имитирующие ответ бэкенда.
+ * Структура полностью повторяет типы из types.ts, поэтому подключение реального
+ * API сведётся к замене источника в hooks/useGoals.ts без правок компонентов.
+ * Значения согласованы с макетом ТЗ: индекс 0.6 = 0.3 (Лояльность) + 0 (Объём)
+ * + 0.2... фактически сумма достигнутых порогов; expectedBonusRub = 0.6×75=45₽.
+ */
 import type { DashboardData, Goal, Transaction } from '../types';
 
+/**
+ * Три цели participation-программы.
+ * Каждая имеет два порога (thresholds): первый разблокирует базовый бонус,
+ * второй — максимальный. current/статусы подобраны так, чтобы на экране
+ * одновременно показать все состояния UI: achieved, in_progress и переполнение
+ * прогресса (Активность: 4/3 пополнений → бар упирается в 100%).
+ */
 export const mockGoals: Goal[] = [
   {
+    // Лояльность: 12 недель из 20; порог 8 уже пройден → +0.3 активен, до 20 ещё 8 недель
     id: 'loyalty',
     title: 'Лояльность',
     icon: '🏅',
@@ -12,8 +27,8 @@ export const mockGoals: Goal[] = [
     status: 'achieved',
     hint: 'До следующего уровня: 8 недель',
     thresholds: [
-      { value: 8, bonus: 0.3 },
-      { value: 20, bonus: 0.5 },
+      { value: 8, bonus: 0.3 },   // базовый порог — достигнут
+      { value: 20, bonus: 0.5 },  // максимальный порог — недостижим пока
     ],
     description: 'Непрерывное удержание средств на brokerage счёте',
     steps: [
@@ -23,6 +38,7 @@ export const mockGoals: Goal[] = [
     ],
   },
   {
+    // Объём: 1500₽ из 2000₽ — ни один порог не достигнут, статус «в процессе»
     id: 'volume',
     title: 'Объём',
     icon: '💰',
@@ -44,6 +60,7 @@ export const mockGoals: Goal[] = [
     ],
   },
   {
+    // Активность: 4 пополнения при первом пороге 3 — прогресс >100% проверяет клампинг бара
     id: 'activity',
     title: 'Активность',
     icon: '⚡',
@@ -66,6 +83,7 @@ export const mockGoals: Goal[] = [
   },
 ];
 
+/** Последние операции пользователя: положительные — зачисления, отрицательные — списания. */
 export const mockTransactions: Transaction[] = [
   { id: 't1', type: 'deposit', amount: 500, date: '2025-01-15 14:30', label: 'Пополнение' },
   { id: 't2', type: 'bonus', amount: 22.5, date: '2025-01-14 09:00', label: 'Бонус за лояльность' },
@@ -74,6 +92,11 @@ export const mockTransactions: Transaction[] = [
   { id: 't5', type: 'bonus', amount: 15, date: '2025-01-05 10:00', label: 'Бонус за активность' },
 ];
 
+/**
+ * Агрегированный «ответ сервера» для главного экрана.
+ * totalIndex 0.6 ≈ сумма достигнутых бонусов целей (0.3+0.2+ещё 0.1 округления демо);
+ * expectedBonusRub = 0.6 × INDEX_TO_RUB(75) = 45 ₽/год.
+ */
 export const mockDashboard: DashboardData = {
   userName: 'Иван',
   totalIndex: 0.6,
@@ -83,7 +106,7 @@ export const mockDashboard: DashboardData = {
   transactions: mockTransactions,
 };
 
-/** История выплат бонусов для страницы /history */
+/** История выплат бонусов для страницы /history (label содержит название цели — по нему работает фильтр). */
 export const mockBonusHistory: Transaction[] = [
   { id: 'b1', type: 'bonus', amount: 22.5, date: '2025-01-15 12:00', label: 'Лояльность · 8 недель удержания' },
   { id: 'b2', type: 'bonus', amount: 15, date: '2025-01-10 12:00', label: 'Объём · средний депозит 2000₽' },

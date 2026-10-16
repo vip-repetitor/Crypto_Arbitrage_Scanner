@@ -1,3 +1,6 @@
+/* index.css — глобальные стили: Tailwind-директивы + базовые правила.
+   Дизайн-токены (цвета/тени/анимации) объявлены в tailwind.config.js,
+   здесь только шрифты, утилиты и accessibility-переопределения. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,12 +13,14 @@ body {
   @apply bg-surface text-ink antialiased;
 }
 
-/* Стабильная ширина цифр для сумм и индексов */
+/* Стабильная ширина цифр для сумм и индексов:
+   табличные фигуры не «прыгают» во время анимации счётчика */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Уважение prefers-reduced-motion */
+/* Уважение prefers-reduced-motion: пользователи с вестибулярной чувствительностью
+   получают мгновенные переходы вместо всех CSS-анимаций приложения */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

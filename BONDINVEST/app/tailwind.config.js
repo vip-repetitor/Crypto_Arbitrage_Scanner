@@ -1,8 +1,11 @@
 /** @type {import('tailwindcss').Config} */
+// Конфиг дизайн-токенов BONDINVEST (палитра/тени/анимации из ТЗ).
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      // Семантические цвета: brand (основное действие), success (прогресс),
+      // gold (бонусы/достижения), ink/muted/line/surface (нейтральная типографика)
       colors: {
         brand: {
           DEFAULT: '#2563EB',
@@ -36,6 +39,7 @@ export default {
         'card-hover': '0 12px 24px rgba(15, 23, 42, 0.12)',
       },
       keyframes: {
+        // Мягкое пульсирующее свечение карточки цели с прогрессом >80%
         pulseGlow: {
           '0%, 100%': { boxShadow: '0 0 0 0 rgba(37, 99, 235, 0.0)' },
           '50%': { boxShadow: '0 0 0 6px rgba(37, 99, 235, 0.25)' },
